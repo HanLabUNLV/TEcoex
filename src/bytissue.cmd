@@ -1,0 +1,11 @@
+Rscript WGCNA.L1HS.bytissue.r result.rsem.instance/ VSTcnt.BLCA.sig.txt bladder &>> WGCNA.BLCA.small.log &
+Rscript WGCNA.L1HS.bytissue.r result.rsem.instance/ VSTcnt.BRCA.sig.txt breast &>> WGCNA.BRCA.small.log &
+Rscript WGCNA.L1HS.bytissue.r result.rsem.instance/ VSTcnt.COADREAD.sig.txt colonrectum &>> WGCNA.COADREAD.small.log &
+Rscript WGCNA.L1HS.bytissue.r result.rsem.instance/ VSTcnt.ESCASTAD.sig.txt esophagusstomach &>> WGCNA.ESCASTAD.small.log &
+Rscript WGCNA.L1HS.bytissue.r result.rsem.instance/ VSTcnt.HNSC.sig.txt headneck &>> WGCNA.HNSC.small.log &
+Rscript WGCNA.L1HS.bytissue.r result.rsem.instance/ VSTcnt.KICHKIRCKIRP.sig.txt kidney &>> WGCNA.KICHKIRCKIRP.small.log &
+Rscript WGCNA.L1HS.bytissue.r result.rsem.instance/ VSTcnt.LIHC.sig.txt liver &>> WGCNA.LICH.small.log &
+Rscript WGCNA.L1HS.bytissue.r result.rsem.instance/ VSTcnt.LUADLUSC.sig.txt lung &>> WGCNA.LUAD.small.log &
+Rscript WGCNA.L1HS.bytissue.r result.rsem.instance/ VSTcnt.PRAD.sig.txt prostate &>> WGCNA.PRAD.small.log &
+Rscript WGCNA.L1HS.bytissue.r result.rsem.instance/ VSTcnt.THCA.sig.txt thyroid &>> WGCNA.THCA.small.log &
+Rscript WGCNA.L1HS.bytissue.r result.rsem.instance/ VSTcnt.UCEC.sig.txt endometrium &>> WGCNA.UCEC.small.log &

@@ -1,0 +1,28 @@
+
+resultdir='result.rsem.TET'
+if [ $# -eq 1 ]; then
+  resultdir=$1
+fi
+resultinstancedir="$resultdir.instance"
+
+echo $resultdir
+echo $resultinstancedir
+
+#bash combine.sh ../../$resultdir 
+
+#parallel -j 20 -a ../../$resultdir/FullInfo/FullInfo.TElist.txt Rscript ZNF2TEbycancertype.r $resultdir/
+
+#python getSigResults.py ../../$resultdir/ZNF ../../$resultdir/ZNF/SigResults.txt
+
+#parallel -j 20 --colsep '\t' Rscript ZNF2TEinstance.r $resultinstancedir/ {1} {2} {3} :::: ../../$resultdir/ZNF/SigResults.txt
+
+#python getSigResults_instances.py ../../$resultinstancedir/ZNF/ ../../$resultinstancedir/ZNF/significant_instances.txt
+
+
+#mkdir "../../$resultinstancedir/ZNF/plots"
+parallel -j 20 --colsep '\t' Rscript checkcor.r $resultdir {1} {2} {3} :::: ../../$resultinstancedir/ZNF/significant_instances.txt
+
+bash ovp.sh 50000
+bash ovp.sh 100000
+bash rmovp.sh ../../$resultinstancedir/ZNF/significant_instances.txt ../../$resultinstancedir/ZNF/sig.TE.ZNF.50000.ovp > ../../$resultinstancedir/ZNF/significant_instances.noovp50000.txt &
+bash rmovp.sh ../../$resultinstancedir/ZNF/significant_instances.txt ../../$resultinstancedir/ZNF/sig.TE.ZNF.100000.ovp > ../../$resultinstancedir/ZNF/significant_instances.noovp100000.txt &
