@@ -1,12 +1,6 @@
 library(stringr)
 library(ggplot2)
 library(DESeq2)
-library(pheatmap)
-#library("RColorBrewer")
-# library("DESeq2")
-# library("geneplotter")
-# library("EDASeq")
-# library("genefilter")
 
 setwd("../")
 args = commandArgs(trailingOnly=TRUE)
@@ -307,40 +301,91 @@ if (file.exists(paste0(resultdir,"ddsNew.RData"))) {
 
 
  
-# violin plot
+# violin plot L1HS
 L1HS_bytype = read.table(paste0(resultdir,"L1HS.VST.txt"), header=TRUE, row.names=1, sep="\t")
+oldLINE = read.table(paste0(resultdir,"oldLINE.VST.txt"), header=TRUE, row.names=1, sep="\t")
+colnames(oldLINE) = c("patient", "oldLINEVSTcnts")
+
+stopifnot(! any(oldLINE$patient!=L1HS_bytype$patient))
+oldLINE <- cbind(oldLINE[,2], L1HS_bytype[,1:2])
+colnames(oldLINE) <- colnames(L1HS_bytype[,c(36, 1, 2)])
+
+L1HS_5prime = read.table(paste0(TEdatadir, "L1HS5prime.300.txt"), header=FALSE, sep="\t", stringsAsFactor=FALSE)
+rownames(L1HS_5prime)= L1HS_5prime[,1]
+L1HS_5prime = L1HS_5prime[as.character(L1HS_bytype$patient),]
+
+stopifnot(! any(rownames(L1HS_5prime)!=L1HS_bytype$patient))
+L1HS_5prime <- cbind(log2(L1HS_5prime[,2]), L1HS_bytype[,c(1,2,4,5)])
+L1HS_5prime[L1HS_5prime[,1]<0,1] = -1
+colnames(L1HS_5prime) <- colnames(L1HS_bytype[,c(36, 1,2,4,5)])
+write.table(L1HS_5prime, file=paste0(resultdir,"L1HS5prime.VST.txt"), quote=FALSE, row.names=TRUE, sep="\t")
+L1HS_5prime <- L1HS_5prime[,1:3]
+
+housekeepinggenes <- read.table("../mobiledna.housekeeping/data/housekeeping.txt")
+gnames <- unlist(strsplit(rownames(VSTcnts), "[|]"))[c(TRUE, FALSE)]
+ctrlgenesidx <-  match(housekeepinggenes[,1], gnames)
+ctrlgenesidx <- ctrlgenesidx[!is.na(ctrlgenesidx)]
+housemeans <- cbind(colMeans(VSTcnts[ctrlgenesidx,]), L1HS_bytype[,1:2])
+stopifnot(! any(rownames(housemeans) != rownames(L1HS_bytype)))
+colnames(housemeans) <- colnames(L1HS_bytype[,c(36, 1, 2)])
+
+L1_house <- rbind(housemeans, L1HS_5prime)
+L1_house$L1 = c(rep(0, nrow(housemeans)), rep(2, nrow(L1HS_5prime)))
+L1_house$L1 <- as.factor(L1_house$L1)
+
 dodge <- position_dodge(width = 0.6)
-ggplot(L1HS_bytype, aes(x=tissue, y=VSTcnts)) + geom_violin(position = dodge) + geom_boxplot(width=0.1, outlier.colour=NA, position = dodge) + theme_bw()
-ggsave(paste0(resultdir, 'violin.bytype.pdf'), dpi=600)
+ggplot(L1_house, aes(x=tissue, y=VSTcnts, fill=L1)) + geom_violin(position = dodge, draw_quantiles = 0.5) + 
+    scale_fill_manual(values=c("#A4A4A4", "#E69F00", "#FF6666", "#D55E00")) +
+    theme_bw()
+ggsave(paste0(resultdir, 'violin.bytype.L1HS.pdf'), width = 20, height = 7, dpi=600)
+
+
+# scatter plot L1HS5prime vs oldLINE
+L1HS_oldLINE <- cbind.data.frame(L1HS_5prime[,1], oldLINE)
+colnames(L1HS_oldLINE)[1] <- "L1HS"
+bp <- ggplot(L1HS_oldLINE, aes(x=L1HS, y=VSTcnts)) + geom_point() 
+pdf(paste0(resultdir, "L1HS5prime2oldLINE.pdf"), height=28, width=7)
+bp + facet_grid(tissue ~ .)
+dev.off()
+L1exp = L1HS_oldLINE
+L1exp[,1:2] = 2^L1HS_oldLINE[,1:2]
+bp <- ggplot(L1exp, aes(x=L1HS, y=VSTcnts)) + geom_point() 
+pdf(paste0(resultdir, "L1HS5prime2oldLINE.exp.pdf"), height=28, width=7)
+bp + facet_grid(tissue ~ .)
+dev.off()
+
+
+# violin plot family means
+TEmeans <- function(familyname)
+{
+  LINEsidx <-  grepl(familyname, gnames)
+  LINEsidx <- LINEsidx[!is.na(LINEsidx)]
+  LINEmeans <- cbind(colMeans(VSTcnts[LINEsidx,]), L1HS_bytype[,1:2])
+  stopifnot(! any(rownames(LINEmeans) != rownames(L1HS_bytype)))
+  colnames(LINEmeans) <- colnames(L1HS_bytype[,c(36, 1, 2)])
+  LINEmeans
+}
+
+LINEmeans <- TEmeans(":LINE")
+DNAmeans <- TEmeans(":DNA")
+LTRmeans <- TEmeans(":LTR")
+SINEmeans <- TEmeans(":SINE")
+
+family_house <- rbind(housemeans, LINEmeans, DNAmeans, LTRmeans, SINEmeans)
+family_house$fam = c(rep(0, nrow(housemeans)), rep(1, nrow(LINEmeans)), rep(2, nrow(DNAmeans)), rep(3, nrow(LTRmeans)), rep(4, nrow(SINEmeans)) )
+family_house$fam <- as.factor(family_house$fam)
+
+dodge <- position_dodge(width = 0.6)
+ggplot(family_house, aes(x=tissue, y=VSTcnts, fill=fam)) + geom_violin(position = dodge, draw_quantiles = 0.5) +
+      scale_fill_manual(values=c("#A4A4A4", "#FDBF6F", "#FB9A99", "#B2DF8A", "#CAB2D6")) +
+      #stat_summary(fun.y=mean, geom="point", shape=20, size=7, color="red", fill="red") +
+      theme_bw()
+ggsave(paste0(resultdir, 'violin.bytype.family.pdf'), width = 20, height = 7, dpi=600)
+
+exit()
 
 
 
- #heatmap
- if (! file.exists(paste0(resultdir,"heatmapTop1000Var.pdf"))) {
-  coldataNew = colData(ddsnew)
-  varGenes <- rowVars(VSTcnts)
-  topVarianceGenes <- head(order(varGenes, decreasing=T),1000)
-  matrix <- VSTcnts[ topVarianceGenes, ]
-  matrix <- matrix - rowMeans(matrix)
-  # select the 'contrast' you want
-  annotation_data <- as.data.frame(coldataNew$tissue)
-  rownames(annotation_data) <- colnames(matrix)
-  colnames(annotation_data) <- "tissue"
-  #colors
-#colors
-  col_vector = c("#e6194b", "#3cb44b", "#ffe119", "#0082c8", "#f58231", "#911eb4", "#46f0f0", "#f032e6", "#d2f53c", "#fabebe", "#008080", "#e6beff", "#aa6e28", "#fffac8", "#800000", "#aaffc3", "#808000", "#ffd8b1", "#000080", "#808080", "#FFFFFF", "#000000")
-
-  mycolors=list(tissue = col_vector[1:length(levels(annotation_data$tissue))])
-names(mycolors$tissue) <- levels(annotation_data$tissue) 
-pdf(file=paste0(resultdir, "heatmapTop1000Var.pdf"), width=7*10, height=7*12)
-par(ps=3)
-pheatmap(matrix, 
-         annotation_col=annotation_data,
-         annotation_colors = mycolors,
-         #fontsize = 7
-)
-  dev.off()
- }
  
 
   if (file.exists(paste0(resultdir,"ddsNew.LRT.RData"))) {

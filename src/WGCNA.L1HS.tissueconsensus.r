@@ -16,6 +16,7 @@ setwd(workingDir);
 library(WGCNA);
 
 library("RDAVIDWebService")
+library("ReactomePA")
 library(org.Hs.eg.db)
 library(annotate)
 
@@ -41,6 +42,7 @@ dir.create(paste0(resultdir, "WGCNA/consensus/Plots"))
 if (file.exists(paste0(resultdir, "WGCNA/consensus/Consensus-dataInput.RData"))) {
   load(paste0(resultdir, "WGCNA/consensus/Consensus-dataInput.RData")) 
   nSets = length(Traits);
+
 } else {
 
 #Read in the female liver data set
@@ -58,7 +60,7 @@ names(normalcnts);
 #
 #=====================================================================================
 
-traitData = read.table(paste0(resultdir, "L1HS.VST.txt"), header=TRUE, sep="\t");
+traitData = read.table(paste0(resultdir, "L1HS5prime.VST.txt"), header=TRUE, sep="\t");
 log2TPMsum <- read.table(file=paste0(resultdir, "log2colsums.txt"), sep="\t", header = TRUE, row.names=1)
 log2TPMsum <- cbind(substr(rownames(log2TPMsum), 1, 12), log2TPMsum)
 colnames(log2TPMsum) <- c("patient", "log2TPMsum")
@@ -395,6 +397,7 @@ dev.off()
 # Set up variables to contain the module-trait correlations
 moduleTraitCor = list();
 moduleTraitPvalue = list();
+moduleTraitEta2 = list();
 # Calculate the correlations
 nSets = length(Traits)
 for (set in 1:nSets)
@@ -407,14 +410,22 @@ for (set in 1:nSets)
   rownames(consMEs[[set]]$data) = rownames(multiExpr[[set]]$data);
   module2L1HS = lm_module2L1HS(consMEs[[set]]$data, Traits[[set]]$data, paste0(resultdir, "WGCNA/consensus/"))
   module2oldLINE = lm_module2oldLINE(consMEs[[set]]$data, Traits[[set]]$data,  paste0(resultdir, "WGCNA/consensus/"))
+
   setModuleTraitCor = data.matrix(cbind(module2L1HS$moduleexp_coef, module2oldLINE$moduleexp_coef))
   rownames(setModuleTraitCor) = colnames(consMEs[[set]]$data)
   colnames(setModuleTraitCor) = c("L1HS", "oldLINE")
+  
   setModuleTraitPvalue = data.matrix(cbind(module2L1HS$moduleexp_pval, module2oldLINE$moduleexp_pval))
   rownames(setModuleTraitPvalue) = colnames(consMEs[[set]]$data)
   colnames(setModuleTraitPvalue) = c("L1HS", "oldLINE")
+
+  setModuleTraitEta2 = data.matrix(cbind(module2L1HS$partialeta2, module2oldLINE$partialeta2))
+  rownames(setModuleTraitEta2) = colnames(consMEs[[set]]$data)
+  colnames(setModuleTraitEta2) = c("L1HS", "oldLINE")
+
   moduleTraitCor[[set]] = setModuleTraitCor;
   moduleTraitPvalue[[set]] = setModuleTraitPvalue;
+  moduleTraitEta2[[set]] = setModuleTraitEta2;
 #
 }
 
@@ -430,28 +441,35 @@ for (set in 1:nSets)
 MEnumeric = names(consMEs[[1]]$data) # modules are shared acorss sets
 MEColors = labels2colors(as.numeric(substring(MEnumeric, 3)));
 MEColorNames = paste("ME", MEColors, sep="");
+modulenumbers <- as.numeric(substring(MEnumeric, 3))
+
 
 for (set in 1:nSets) {
 
 # Open a suitably sized window (the user should change the window size if necessary)
 #sizeGrWindow(10,7)
-pdf(file = paste0(resultdir, "WGCNA/consensus/Plots/ModuleTraitRelationships-",shortLabels[set],".pdf"), wi = 10, he = 7);
+pdf(file = paste0(resultdir, "WGCNA/consensus/Plots/ModuleTraitRelationships-",shortLabels[set],".pdf"), wi = 10, he = 12);
 # Plot the module-trait relationship table for set number 1
 textMatrix =  paste(signif(moduleTraitCor[[set]], 2), "\n(",
                            signif(moduleTraitPvalue[[set]], 1), ")", sep = "");
 dim(textMatrix) = dim(moduleTraitCor[[set]])
 par(mar = c(6, 8.8, 3, 2.2));
-zlimit = ceiling(max(abs(moduleTraitCor[[set]])))
-labeledHeatmap(Matrix = moduleTraitCor[[set]],
+zlimit = ceiling(max(abs(moduleTraitEta2[[set]])))
+colorlevel = sign(moduleTraitCor[[set]])*moduleTraitEta2[[set]]
+#print(moduleTraitCor[[set]])
+#print(sign(moduleTraitCor[[set]]))
+#print(moduleTraitEta2[[set]])
+#print(colorlevel)
+labeledHeatmap(Matrix = colorlevel,
                xLabels = c("L1HS", "oldLINE"),
                yLabels = MEnumeric,
                ySymbols = MEnumeric,
                colorLabels = FALSE,
-               colors = rev(blueWhiteRed(50)),
+               colors = blueWhiteRed(50),
                textMatrix = textMatrix,
                setStdMargins = FALSE,
                cex.text = 0.5,
-               zlim = c(-zlimit, zlimit),
+               zlim = c(-1, 1),
                main = paste("Module--trait relationships in", shortLabels[set]))
 dev.off();
 }
@@ -465,6 +483,7 @@ dev.off();
 # Initialize matrices to hold the consensus correlation and p-value
 consensusCor = matrix(NA, nrow(moduleTraitCor[[1]]), ncol(moduleTraitCor[[1]]));
 consensusPvalue = matrix(NA, nrow(moduleTraitCor[[1]]), ncol(moduleTraitCor[[1]]));
+consensusEta2 = matrix(NA, nrow(moduleTraitCor[[1]]), ncol(moduleTraitCor[[1]]));
 # Find consensus negative correlations
 negative = matrix(TRUE, nrow(moduleTraitCor[[1]]), ncol(moduleTraitCor[[1]]));
 for (set in 1:nSets) {
@@ -472,18 +491,27 @@ for (set in 1:nSets) {
 }
 args_cor <- vector("list", nSets)
 args_pval <- vector("list", nSets)
+args_eta2 <- vector("list", nSets)
 for (set in 1:nSets) {
   args_cor[[set]] = moduleTraitCor[[set]][negative ]
   args_pval[[set]] = moduleTraitPvalue[[set]][negative ]
+  args_eta2[[set]] = moduleTraitEta2[[set]][negative ]
 }
 #consensusCor[negative] = do.call(pmax, args_cor)
 #consensusPvalue[negative] = do.call(pmax, args_pval)
 args_cor_mat <- t(matrix(t(unlist(args_cor)), ncol=nSets))
 args_cor_mat[args_cor_mat==0] = NA
-consensusCor[negative] = apply(args_cor_mat, 2, max, na.rm=TRUE)
+#consensusCor[negative] = apply(args_cor_mat, 2, max, na.rm=TRUE)
+consensusCor[negative] = apply(args_cor_mat, 2, median, na.rm=TRUE)
+
 args_pval_mat <- t(matrix(t(unlist(args_pval)), ncol=nSets))
 args_pval_mat[is.na(args_cor_mat)] = NA
-consensusPvalue[negative] = apply(args_pval_mat, 2, max, na.rm=TRUE)
+#consensusPvalue[negative] = apply(args_pval_mat, 2, max, na.rm=TRUE)
+consensusPvalue[negative] = apply(args_pval_mat, 2, median, na.rm=TRUE)
+
+args_eta2_mat <- t(matrix(t(unlist(args_eta2)), ncol=nSets))
+args_eta2_mat[is.na(args_cor_mat)] = NA
+consensusEta2[negative] = apply(args_eta2_mat, 2, median, na.rm=TRUE)
 
 # Find consensus positive correlations
 positive = matrix(TRUE, nrow(moduleTraitCor[[1]]), ncol(moduleTraitCor[[1]]));
@@ -492,18 +520,27 @@ for (set in 1:nSets) {
 }
 args_cor <- vector("list", nSets)
 args_pval <- vector("list", nSets)
+args_eta2 <- vector("list", nSets)
 for (set in 1:nSets) {
-    args_cor[[set]] = moduleTraitCor[[set]][positive ]
-    args_pval[[set]] = moduleTraitPvalue[[set]][positive ]
+  args_cor[[set]] = moduleTraitCor[[set]][positive ]
+  args_pval[[set]] = moduleTraitPvalue[[set]][positive ]
+  args_eta2[[set]] = moduleTraitEta2[[set]][positive ]
 }
 #consensusCor[positive] = do.call(pmin, args_cor)
 #consensusPvalue[positive] = do.call(pmax, args_pval)
 args_cor_mat <- t(matrix(t(unlist(args_cor)), ncol=nSets))
 args_cor_mat[args_cor_mat==0] = NA
-consensusCor[positive] = apply(args_cor_mat, 2, min, na.rm=TRUE)
+#consensusCor[positive] = apply(args_cor_mat, 2, min, na.rm=TRUE)
+consensusCor[positive] = apply(args_cor_mat, 2, median, na.rm=TRUE)
+
 args_pval_mat <- t(matrix(t(unlist(args_pval)), ncol=nSets))
 args_pval_mat[is.na(args_cor_mat)] = NA
-consensusPvalue[positive] = apply(args_pval_mat, 2, max, na.rm=TRUE)
+#consensusPvalue[positive] = apply(args_pval_mat, 2, max, na.rm=TRUE)
+consensusPvalue[positive] = apply(args_pval_mat, 2, median, na.rm=TRUE)
+
+args_eta2_mat <- t(matrix(t(unlist(args_eta2)), ncol=nSets))
+args_eta2_mat[is.na(args_cor_mat)] = NA
+consensusEta2[positive] = apply(args_eta2_mat, 2, median, na.rm=TRUE)
 
 
 #=====================================================================================
@@ -519,17 +556,18 @@ dim(textMatrix) = dim(consensusCor)
 #sizeGrWindow(10,7)
 pdf(file = paste0(resultdir, "WGCNA/consensus/Plots/ModuleTraitRelationships-consensus.pdf"), wi = 10, he = 12);
 par(mar = c(6, 8.8, 3, 2.2));
-zlimit = ceiling(max(abs(consensusCor), na.rm=TRUE))
-labeledHeatmap(Matrix = consensusCor,
+zlimit = ceiling(max(abs(consensusEta2), na.rm=TRUE))
+colorlevel = sign(consensusCor)*consensusEta2
+labeledHeatmap(Matrix = colorlevel,
                xLabels = c("L1HS", "oldLINE"),
                yLabels = MEnumeric,
                ySymbols = MEnumeric,
                colorLabels = TRUE,
-               colors = rev(blueWhiteRed(50)),
+               colors = blueWhiteRed(50),
                textMatrix = textMatrix,
                setStdMargins = FALSE,
                cex.text = 0.5,
-               zlim = c(-zlimit,zlimit),
+               zlim = c(-1, 1),
                main = paste("Consensus module--trait relationships across\n",
                             paste(setLabels, collapse = " and ")))
 dev.off()
@@ -643,7 +681,6 @@ info = data.frame(Gene = genenames, GeneSymbol = annot$GENE[gene2annot],
 write.csv(info, file = paste0(resultdir, "WGCNA/consensus/consensusAnalysis-CombinedNetworkResults.csv"), row.names = FALSE, quote = FALSE);
 
 interestingmodules = which((is.na(consensusCor[,1])&is.na(consensusCor[,2]))==FALSE)
-modulenumbers <- as.numeric(substring(MEnumeric, 3))
 #for( i in modulenumbers[interestingmodules]) {
 for( i in modulenumbers) {
   if (i == 0) {print ("skipping grey"); next;}
@@ -660,6 +697,23 @@ for( i in modulenumbers) {
     symbols <- lapply(symbols, sort)
     lapply(symbols, write, paste0(resultdir, "WGCNA/consensus/", paste("termClusterSymbols",i,labels2colors(i),"txt", sep=".")), append=TRUE, ncolumns=1000)
     getClusterReportFile(david, type="Term", fileName=reportfileName)
+  }
+}
+
+
+for( i in modulenumbers) {
+  if (i == 0) {print ("skipping grey"); next;}
+  #reportFileName=paste0(resultdir, "WGCNA/bytissue/", shortname, "/", paste("termClusterReport",i,labels2colors(i),"txt",sep="."))
+  #if (file.exists(reportFileName)) {print (paste0("skipping ", reportFileName)); next}
+  genelist <- info[info$ModuleLabel==i,"EntrezID"]
+  genelist = genelist[!is.na(genelist)]
+  x <- enrichPathway(gene=genelist, pvalueCutoff=0.05, readable=T)
+  if (! is.null(x) && nrow(x)) {
+    write.table(as.data.frame(x), file = paste0(resultdir, "WGCNA/consensus/", paste("Reactome",i,labels2colors(i),"txt", sep=".") ), row.names = FALSE, quote = FALSE);
+    dotplot(x, showCategory=15)
+    ggsave(filename=paste0(resultdir, "WGCNA/consensus/Plots/", paste("Reactome",i,labels2colors(i),"pdf", sep=".")), width=16, height=(min(nrow(as.data.frame(x)),15)*0.32), units = "in", limitsize = FALSE )
+    emapplot(x)
+    ggsave(filename=paste0(resultdir, "WGCNA/consensus/Plots/", paste("Reactome",i,labels2colors(i),"em.pdf", sep=".")), width=8, height=12, units = "in")
   }
 }
 

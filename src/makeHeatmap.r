@@ -1,7 +1,8 @@
 library("RColorBrewer")
 library("DESeq2")
-library("pheatmap")
 library("dendsort")
+library("ComplexHeatmap")
+library("circlize")
 source("nmi.r")
 
 
@@ -65,7 +66,7 @@ broadertype[broadertype=="LUAD"] = "LUADLUSC"
 broadertype[broadertype=="LUSC"] = "LUADLUSC"
 annotation_data <- cbind.data.frame(annotation_data,broadertype)
 
-callback = function(hc, ...){dendsort(hc)}
+#callback = function(hc, ...){dendsort(hc)}
 
 
 #colors
@@ -78,7 +79,6 @@ mycolors=list(tissue = col_vector[1:length(levels(annotation_data$tissue))],
               broadertype = col_vector2[1:length(levels(annotation_data$broadertype))])
 names(mycolors$tissue) <- levels(annotation_data$tissue) 
 names(mycolors$broadertype) <- levels(annotation_data$broadertype) 
-
 
 
 rnMI <- rep(0, 100)
@@ -98,22 +98,13 @@ print(mean(rnMI))
 
     varGenes <- rowVars(VSTcnts)
     topVarianceGenes <- head(order(varGenes, decreasing=T),top)
-    matrix <- VSTcnts[ topVarianceGenes, ]
-    matrix <- matrix - rowMeans(matrix)
+    mat <- VSTcnts[ topVarianceGenes, ]
+    mat <- mat - rowMeans(mat)
     for (run in 1:10) {
-      # select the 'contrast' you want
-      pdf(file=filename, width=7*10, height=7*15)
-      par(ps=3)
-      out <- pheatmap(matrix,
-          clustering_callback = callback,
-          annotation_col=annotation_data,
-          annotation_colors = mycolors,
-          border_color = NA,
-          #fontsize = 7
-          )
-      dev.off()
+      hc=hclust(d = dist(t(mat)), method = "ave")
+      memb <- cutree(hc, k=length(levels(annotation_data$tissue)))
 
-      cid <- as.data.frame(sort(cutree(out$tree_col, k=length(levels(annotation_data$tissue)))))
+      cid <- as.data.frame(sort(memb))
       clusterid <- merge(annotation_data, cid, by="row.names")
       colnames(clusterid)[4] = "clusterid"
       cluster2gtype = rep(0, nrow(clusterid))
@@ -135,6 +126,29 @@ print(mean(rnMI))
       print(nMI)
 
     }
+
+    dend_col = dendsort(as.dendrogram(hc))
+    dend_row = dendsort(as.dendrogram(hclust(dist(mat))))
+    # select the 'contrast' you want
+    pdf(file=filename, width=20, height=12)
+    par(ps=3)
+
+
+    ha = HeatmapAnnotation(annotation_data, col=mycolors, 
+        #annotation_legend_param = list(type = list(grid_height=10)),
+        )
+    #pushViewport(viewport(layout.pos.row = 1, layout.pos.col = 3))
+    ht = Heatmap(mat, cluster_rows = dend_row, row_dend_reorder = FALSE, 
+              name = "ht", cluster_columns = dend_col, column_dend_reorder = FALSE, 
+              top_annotation = ha,
+              top_annotation_height = unit(8, "cm"),
+              show_row_names = FALSE, show_column_names = FALSE,
+              #col = colorRampPalette(rev(brewer.pal(n = 7, name = "RdYlBu")))(100),
+              col = colorRamp2(c(-5, 0, 5), c("blue", "#ffffbf", "red")),
+              column_title = "")
+    #upViewport(2)
+    draw(ht, newpage = FALSE)
+    dev.off()
 
   }
 

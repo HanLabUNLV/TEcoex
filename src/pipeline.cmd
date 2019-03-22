@@ -106,6 +106,7 @@ Rscript makeHeatmap.r result.rsem.TET.bowtie.instance noovp &> heatmap.bowtie.in
 
 # run ZNF scripts before splitVSTcnts.r
 Rscript splitVSTcnts.r ../result.rsem.TET.bowtie.instance/
+#Rscript splitVSTcnts.r ../result.rsem.TET.bowtie.instance/ noovp
 
 Rscript WGCNA.L1HS.instance.bytissue.r result.rsem.TET.bowtie.instance/ VSTcnt.BLCA.sig.txt bladder 0 &> wgcna.bowtie.instance.BLCA.log &
 Rscript WGCNA.L1HS.instance.bytissue.r result.rsem.TET.bowtie.instance/ VSTcnt.BRCA.sig.txt breast 0 &> wgcna.bowtie.instance.BRCA.log &

@@ -130,7 +130,7 @@ lm_module2L1HS <- function(eigenGenes, traits, resultdir) {
   positive <- positive[order(-positive$partialeta2),]
   write.table(positive, file=filename, sep="\t", row.names = FALSE, quote=FALSE)
   }
-  results <- cbind.data.frame(moduleexp_coef, moduleexp_pval)
+  results <- cbind.data.frame(moduleexp_coef, moduleexp_pval, partialeta2)
   rownames(results) = modules
   return (results)
 }
@@ -261,7 +261,7 @@ lm_module2oldLINE <- function(eigenGenes, traits, resultdir) {
   positive <- positive[order(-positive$partialeta2),]
   write.table(positive, file=filename, sep="\t", row.names = FALSE, quote=FALSE)
   }
-  results <- cbind.data.frame(moduleexp_coef, moduleexp_pval)
+  results <- cbind.data.frame(moduleexp_coef, moduleexp_pval, partialeta2)
   rownames(results) = modules
   return (results)
 }

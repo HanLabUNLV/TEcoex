@@ -36,7 +36,7 @@ generatio <- function(genename)
 
 
 
-L1HS <- read.table(paste0(resultdir, "L1HS.VST.txt"), sep="\t", header=TRUE, row.names=1)
+L1HS <- read.table(paste0(resultdir, "L1HS5prime.VST.txt"), sep="\t", header=TRUE, row.names=1)
 #L1HS <- L1HS[L1HS$condition=="normal",]
 #colnames(L1HS)[7:8] <-c("L1HSnRPM", "VSTcnts")
 
