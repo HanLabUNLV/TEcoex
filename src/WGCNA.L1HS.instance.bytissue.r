@@ -19,6 +19,10 @@ options(stringsAsFactors = FALSE);
 args = commandArgs(trailingOnly=TRUE)
 datadir = "data/"
 resultdir = "result.rsem.TET.instance/"
+familyresultdir = gsub(".instance", "", resultdir)
+TEdatadir = paste0(datadir, resultdir)
+TEdatadir = gsub("result.rsem.", "", TEdatadir)
+TEdatadir = gsub(".instance", "", TEdatadir)
 print (args)
 if (length(args)>0) {
   resultdir = args[1]
@@ -288,6 +292,24 @@ traitData = read.table(paste0(resultdir, "WGCNA/", "WGCNA.L1HS.clinical.txt"), h
 
 
 
+
+
+# plot heatmap against the consensus eigenGenes
+pdf(file = paste0(resultdir, "WGCNA/bytissue/", shortname, "/Plots/EigengeneHeatmaps.pdf"), width= 12, height = 12);
+  conME = read.table(paste0(familyresultdir, "WGCNA/consensus/moduleEigengenes.", setname, ".txt"))
+  colnames(conME) = paste0("con", colnames(conME))
+  newME = cbind(conME, MEs)
+  corME = cor(newME, use = "p")
+  pME = corPvalueFisher(corME, nrow(newME))
+  labeledHeatmap(corME[1:ncol(conME),(ncol(conME)+1):ncol(newME)],  
+      names(MEs), names(conME), main = setname, invertColors = FALSE, 
+      zlim = c(-1, 1), colorLabels = FALSE 
+      )
+
+dev.off();
+
+
+
 source("src/modulecor.nocontrol.r")
 library("RDAVIDWebService")
 library("ReactomePA")
@@ -357,6 +379,18 @@ library(annotate)
 
 }
 
+
+
+
+  # Convert numerical lables to colors for labeling of modules in the plot
+  MEnumeric = names(MEs)
+  MEColors = labels2colors(as.numeric(substring(MEnumeric, 3)));
+  MEColorNames = paste("ME", MEColors, sep="");
+  modulenumbers <- as.numeric(substring(MEnumeric, 3))
+
+
+
+
 #=====================================================================================
 #
 #  Code chunk 10
@@ -377,50 +411,45 @@ getClusterSymbols <- function (termCluster) {
 }
 
 
+#
+#for( i in modulenumbers) {
+#  if (i == 0) {print ("skipping grey"); next;}
+#  reportFileName=paste0(resultdir, "WGCNA/bytissue/", shortname, "/", paste("termClusterReport",i,labels2colors(i),"txt",sep="."))
+#  if (file.exists(reportFileName)) {print (paste0("skipping ", reportFileName)); next}
+#  david<-DAVIDWebService(email="mira.han@unlv.edu", url="https://david.ncifcrf.gov/webservice/services/DAVIDWebService.DAVIDWebServiceHttpSoap12Endpoint/")
+#  setTimeOut(david, 80000)
+#  setAnnotationCategories(david, getDefaultCategoryNames(david))
+#  #genelist <- geneInfo[geneInfo$moduleColor==color,"EntrezID"]
+#  genelist <- geneInfo[geneInfo$moduleLabel==i,"EntrezID"]
+#  result<-addList(david, genelist, idType="ENTREZ_GENE_ID", listName=paste("module", i, labels2colors(i)), listType="Gene")
+#  termCluster<-getClusterReport(david, type="Term")
+#  if (length(members(termCluster)) > 0) {
+#    symbols <- getClusterSymbols(termCluster)
+#    symbols <- lapply(symbols, sort)
+#    lapply(symbols, write, paste0(resultdir, "WGCNA/bytissue/", shortname, "/", paste("termClusterSymbols",i,labels2colors(i),"txt", sep=".")), append=TRUE, ncolumns=1000)
+#    Sys.sleep(1)
+#    getClusterReportFile(david, type="Term", fileName=reportFileName)
+#    Sys.sleep(1)
+#  }
+#}
+#
 
-  # Convert numerical lables to colors for labeling of modules in the plot
-  MEnumeric = names(MEs)
-  MEColors = labels2colors(as.numeric(substring(MEnumeric, 3)));
-  MEColorNames = paste("ME", MEColors, sep="");
-modulenumbers <- as.numeric(substring(MEnumeric, 3))
-for( i in modulenumbers) {
-  if (i == 0) {print ("skipping grey"); next;}
-  reportFileName=paste0(resultdir, "WGCNA/bytissue/", shortname, "/", paste("termClusterReport",i,labels2colors(i),"txt",sep="."))
-  if (file.exists(reportFileName)) {print (paste0("skipping ", reportFileName)); next}
-  david<-DAVIDWebService(email="mira.han@unlv.edu", url="https://david.ncifcrf.gov/webservice/services/DAVIDWebService.DAVIDWebServiceHttpSoap12Endpoint/")
-  setTimeOut(david, 80000)
-  setAnnotationCategories(david, getDefaultCategoryNames(david))
-  #genelist <- geneInfo[geneInfo$moduleColor==color,"EntrezID"]
-  genelist <- geneInfo[geneInfo$moduleLabel==i,"EntrezID"]
-  result<-addList(david, genelist, idType="ENTREZ_GENE_ID", listName=paste("module", i, labels2colors(i)), listType="Gene")
-  termCluster<-getClusterReport(david, type="Term")
-  if (length(members(termCluster)) > 0) {
-    symbols <- getClusterSymbols(termCluster)
-    symbols <- lapply(symbols, sort)
-    lapply(symbols, write, paste0(resultdir, "WGCNA/bytissue/", shortname, "/", paste("termClusterSymbols",i,labels2colors(i),"txt", sep=".")), append=TRUE, ncolumns=1000)
-    Sys.sleep(1)
-    getClusterReportFile(david, type="Term", fileName=reportFileName)
-    Sys.sleep(1)
-  }
-}
-
-
-
-for( i in modulenumbers) {
-  if (i == 0) {print ("skipping grey"); next;}
-  if (file.exists(paste0(resultdir, "WGCNA/bytissue/", shortname, "/Plots/", paste0("reactome.",shortname,".",i,".",labels2colors(i),".em.pdf")))) {print (paste0("skipping reactome ", labels2colors(i))); next}
-  genelist <- geneInfo[geneInfo$moduleLabel==i,"EntrezID"]
-  x <- enrichPathway(gene=genelist[!is.na(genelist)], pvalueCutoff=0.05, readable=T)
-  Sys.sleep(1) 
-  write.table(x, file = paste0(resultdir, "WGCNA/bytissue/", shortname, "/", paste("reactome", i, labels2colors(i), "txt", sep=".")), quote=FALSE, row.names=TRUE, sep="\t")
-  if (! is.null(x) && nrow(x)) {
-    dotplot(x, showCategory=15)
-    ggsave(filename=paste0(resultdir, "WGCNA/bytissue/", shortname, "/Plots/", paste0("reactome.",shortname,".",i,".",labels2colors(i),".pdf")), width = 8, height = 12, units = "in");
-    emapplot(x)
-    ggsave(filename=paste0(resultdir, "WGCNA/bytissue/", shortname, "/Plots/", paste0("reactome.",shortname,".",i,".",labels2colors(i),".em.pdf")), width = 8, height = 12, units = "in");
-  }
-}
-
+#
+#for( i in modulenumbers) {
+#  if (i == 0) {print ("skipping grey"); next;}
+#  if (file.exists(paste0(resultdir, "WGCNA/bytissue/", shortname, "/Plots/", paste0("reactome.",shortname,".",i,".",labels2colors(i),".em.pdf")))) {print (paste0("skipping reactome ", labels2colors(i))); next}
+#  genelist <- geneInfo[geneInfo$moduleLabel==i,"EntrezID"]
+#  x <- enrichPathway(gene=genelist[!is.na(genelist)], pvalueCutoff=0.05, readable=T)
+#  Sys.sleep(1) 
+#  write.table(x, file = paste0(resultdir, "WGCNA/bytissue/", shortname, "/", paste("reactome", i, labels2colors(i), "txt", sep=".")), quote=FALSE, row.names=TRUE, sep="\t")
+#  if (! is.null(x) && nrow(x)) {
+#    dotplot(x, showCategory=15)
+#    ggsave(filename=paste0(resultdir, "WGCNA/bytissue/", shortname, "/Plots/", paste0("reactome.",shortname,".",i,".",labels2colors(i),".pdf")), width = 8, height = 12, units = "in");
+#    emapplot(x)
+#    ggsave(filename=paste0(resultdir, "WGCNA/bytissue/", shortname, "/Plots/", paste0("reactome.",shortname,".",i,".",labels2colors(i),".em.pdf")), width = 8, height = 12, units = "in");
+#  }
+#}
+#
 
 
 
@@ -460,15 +489,14 @@ for( i in modulenumbers) {
   dev.off()
 
 
-
 for (trait in 1:ncol(datTraits))
 {
 # Define variable current_trait containing the current_trait column of datTrait
   current_trait = as.data.frame(datTraits[,trait]);
   names(current_trait) = colnames(datTraits)[trait] 
 
-  geneInfofile = paste0(resultdir, "WGCNA/bytissue/", shortname, "/", paste0("geneInfo.", names(current_trait),".", shortname,".txt"))
-  if (file.exists(geneInfofile)) {print (paste0("skipping ", names(current_trait))); next}
+  traitGSfile = paste0(resultdir, "WGCNA/bytissue/", shortname, "/", paste0("traitGS.", names(current_trait),".", shortname,".txt"))
+  #if (file.exists(traitGSfile)) {print (paste0("skipping ", names(current_trait))); next}
 
 # names (colors) of the modules
   modNames = substring(names(MEs), 3)
@@ -484,54 +512,41 @@ for (trait in 1:ncol(datTraits))
 
   names(geneTraitSignificance) = "GS";
   names(GSPvalue) = "p.GS"
-
-  for (module in modNames) {
-    column = match(module, modNames);
-    moduleGenes = (moduleLabels==module);
-    pdf(paste0(resultdir, "WGCNA/bytissue/", shortname, "/Plots/", "module.gene.sig.",shortname,".",names(current_trait),".",module,".pdf"))
-    sizeGrWindow(7, 7);
-    par(mfrow = c(1,1));
-    verboseScatterplot(abs(geneModuleMembership[moduleGenes, column]),
-                       abs(geneTraitSignificance[moduleGenes, 1]),
-                       xlab = paste("Module Membership in", module, "module"),
-                       ylab = paste("Gene significance for", names(current_trait)),
-                       main = paste("Module membership vs. gene significance\n"),
-                       cex.main = 1.2, cex.lab = 1.2, cex.axis = 1.2, col = module)
-    dev.off()
-  }
-
-
-#=====================================================================================
 #
-#  Code chunk 6
+#  for (module in modNames) {
+#    column = match(module, modNames);
+#    moduleGenes = (moduleLabels==module);
+#    pdf(paste0(resultdir, "WGCNA/bytissue/", shortname, "/Plots/", "module.gene.sig.",shortname,".",names(current_trait),".",module,".pdf"))
+#    sizeGrWindow(7, 7);
+#    par(mfrow = c(1,1));
+#    verboseScatterplot(abs(geneModuleMembership[moduleGenes, column]),
+#                       abs(geneTraitSignificance[moduleGenes, 1]),
+#                       xlab = paste("Module Membership in", module, "module"),
+#                       ylab = paste("Gene significance for", names(current_trait)),
+#                       main = paste("Module membership vs. gene significance\n"),
+#                       cex.main = 1.2, cex.lab = 1.2, cex.axis = 1.2, col = module)
+#    dev.off()
+#  }
 #
-#=====================================================================================
-
-
-#names(datExpr)
-
-
-#=====================================================================================
-#
-#  Code chunk 7
-#
-#=====================================================================================
-
-
-#names(datExpr)[moduleColors=="yellow"]
 
 
 
+#file = gzfile(description = "GeneAnnotation.csv.gz");
+  annot = read.table(paste0(datadir, "TCGA.annot.uniq.txt"), header=TRUE, sep="\t");
+# Match genes in the data set to the probe IDs in the annotation file 
+  genenames = colnames(datExpr)
+  geneidx = !grepl (":", genenames)
+  annotnames = paste(annot$GENE, annot$ENTREZID, sep="|")
+  gene2annot = match(genenames, annotnames)
 
-#=====================================================================================
-#
-#  Code chunk 9
-#
-#=====================================================================================
+# The following is the number or probes without annotation:
+  sum(is.na(gene2annot[geneidx]))
+# Should return 0.
 
 
 # Create the starting data frame
-  geneInfo0 = data.frame(Gene = genenames, GeneSymbol = annot$GENE[gene2annot],
+  genenames = colnames(datExpr)
+  traitGS0 = data.frame(Gene = genenames, GeneSymbol = annot$GENE[gene2annot],
                EntrezID = annot$ENTREZID[gene2annot],
                         moduleLabel = moduleLabels,
                         moduleColor = moduleColors,
@@ -542,15 +557,15 @@ for (trait in 1:ncol(datTraits))
 # Add module membership information in the chosen order
   for (mod in 1:ncol(geneModuleMembership))
   {
-    oldNames = names(geneInfo0)
-    geneInfo0 = data.frame(geneInfo0, geneModuleMembership[, modOrder[mod]], 
+    oldNames = names(traitGS0)
+    traitGS0 = data.frame(traitGS0, geneModuleMembership[, modOrder[mod]], 
                            MMPvalue[, modOrder[mod]]);
-    names(geneInfo0) = c(oldNames, paste("MM.", modNames[modOrder[mod]], sep=""),
+    names(traitGS0) = c(oldNames, paste("MM.", modNames[modOrder[mod]], sep=""),
                          paste("p.MM.", modNames[modOrder[mod]], sep=""))
   }
-# Order the genes in the geneInfo variable first by module color, then by geneTraitSignificance
-  geneOrder = order(geneInfo0$moduleColor, -abs(geneInfo0$GS));
-  geneInfo = geneInfo0[geneOrder, ]
+# Order the genes in the traitGS variable first by module color, then by geneTraitSignificance
+  geneOrder = order(traitGS0$moduleColor, -abs(traitGS0$GS));
+  traitGS = traitGS0[geneOrder, ]
 
 
 #=====================================================================================
@@ -559,9 +574,42 @@ for (trait in 1:ncol(datTraits))
 #
 #=====================================================================================
 
-
-  write.table(geneInfo, file=geneInfofile, quote=FALSE, row.names=TRUE, sep="\t")
+  write.table(traitGS, file=traitGSfile, quote=FALSE, row.names=TRUE, sep="\t")
 }
+
+
+
+# find modules that best correlate with the global transposon levels
+
+TEidx = grepl (":", genenames)
+LINEpval = moduleTraitPvalue[, "oldLINE"]
+TEmodule = as.numeric(substring(names(LINEpval[order(LINEpval)][1]), 3))
+genesinTEmodule = geneInfo$moduleLabel %in% TEmodule
+TEsinTEmodule = genesinTEmodule & TEidx
+genesinTEmodule = genesinTEmodule & !TEidx
+collabel = paste0("MM.", TEmodule)
+FilterGenes= geneInfo[,collabel]>.8
+write.table(geneInfo[FilterGenes, 1:5], file = paste0(resultdir, "WGCNA/bytissue/", shortname, "/TEmodule.", TEmodule,".highMMgenes.txt"), row.names = FALSE, quote = FALSE)
+
+
+TSS = read.table(paste0(datadir, "TCGA.TSS.uniq.txt"), header=TRUE, sep="\t");
+rownames(TSS) = paste(TSS[,1], TSS[,2], sep="|")
+
+  corTEs = FilterGenes & grepl(":", geneInfo$Gene)
+  corgenes = FilterGenes & !grepl(":", geneInfo$Gene)
+  TSS.corgenes = TSS[as.character(geneInfo[corgenes,1]),]
+  TSS.corgenes$start = TSS.corgenes[,4]-1000
+  TSS.corgenes$end = TSS.corgenes[,4]+1000
+  TSS.corgenes$score = rep(".", nrow(TSS.corgenes))
+  write.table(TSS.corgenes[,c(3, 6, 7, 1, 8, 5)], file = paste0(resultdir, "WGCNA/bytissue/", shortname, "/TEmodule.TSS.genes.bed"), row.names = FALSE, quote = FALSE, sep="\t")
+
+
+TE.bed = read.table(paste0(TEdatadir, "maxgt5.bed"), header=FALSE, sep="\t");
+corTEnames = sapply(strsplit(as.character(geneInfo[corTEs,1]),"[:]"), `[`, 1)
+rownames(TE.bed) = TE.bed[,4]
+corTE.bed = TE.bed[corTEnames,]
+write.table(corTE.bed, file=paste0(resultdir, "WGCNA/bytissue/", shortname, "/TEmodule.TSS.TEs.bed"), row.names = FALSE, quote = FALSE, sep="\t")
+
 
 
 

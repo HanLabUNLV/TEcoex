@@ -6,12 +6,12 @@ library(doParallel)
 countTEs <- function(rawfile, discountfile, by, TEnamecols) {
 
   print (paste(rawfile, discountfile))
-  rawcnts <- read.table(paste("../data/TET/",as.character(rawfile), sep="/"), header=TRUE)
-  discounts <- read.table(paste("../data/TET/",as.character(discountfile), sep="/"), header=TRUE)
+  rawcnts <- read.table(paste("../data/TET.bowtie/",as.character(rawfile), sep="/"), header=TRUE)
+  discounts <- read.table(paste("../data/TET.bowtie/",as.character(discountfile), sep="/"), header=TRUE)
   #m <- matrix(unlist(strsplit(as.character(discounts[, 1]), ":")), ncol = TEnamecols, byrow = TRUE)
   if (nrow(discounts) != nrow(rawcnts)) {
     message("rownums do not match")
-    rawcnts <- read.table(paste("../data/TET/",as.character(rawfile), sep="/"), header=FALSE)
+    rawcnts <- read.table(paste("../data/TET.bowtie/",as.character(rawfile), sep="/"), header=FALSE)
     #stop()
   }
 
@@ -42,9 +42,9 @@ print (paste(rawfnames, discountfnames))
     TEnamecols = 5
   }
 
-  #rawfile.names <- dir("../data/TET/", pattern =paste0(".", cntby, ".cntTable2"), recursive=TRUE)
+  #rawfile.names <- dir("../data/TET.bowtie/", pattern =paste0(".", cntby, ".cntTable2"), recursive=TRUE)
   rawfile.names <- read.table(rawfnames, stringsAsFactors = FALSE)
-  #discountfile.names <- dir("../data/TET/", pattern =paste0(".", cntby, ".cntTable"), recursive=TRUE)
+  #discountfile.names <- dir("../data/TET.bowtie/", pattern =paste0(".", cntby, ".cntTable"), recursive=TRUE)
   discountfile.names <- read.table(discountfnames, stringsAsFactors = FALSE)
   x <- grepl("discount", discountfile.names)
   discountidx <- x
@@ -75,7 +75,7 @@ print (paste(rawfnames, discountfnames))
       Maxdiff[i,1+(j*4)] = as.character(bylargediff[j+1,1])
       Maxdiff[i,2:4+(j*4)] = bylargediff[j+1,1:3+TEnamecols]
       L1HSdiff[i,1+(j*4)] = as.character(byL1HSdiff[j+1,1])
-      L1HSdiff[i,2:4+(j*4)] = byL1HSdiff[j+1,1:3]
+      L1HSdiff[i,2:4+(j*4)] = byL1HSdiff[j+1,1:3+TEnamecols]
     }
   }
 

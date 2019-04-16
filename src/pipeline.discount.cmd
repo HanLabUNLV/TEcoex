@@ -12,14 +12,14 @@
 #Rscript plotdiscounts.r HERVK9-int
 #Rscript plotdiscounts.r LTR5_Hs
 #
-#find ../data/TET -name "*instance.cntTable" | grep -v v1  | grep -v discount > instancefiles
+#find ../data/TET.bowtie -name "*instance.cntTable" | grep -v v1  | grep -v discount > instancefiles
 #parallel -j 20 -a instancefiles bash filterintronTET.sh
 #rm instancefiles
-#find ../data/TET -name "*cntTable2" | sed 's/\.\.\/data\/TET\///' | sort > cntTable2
-#find ../data/TET -name "*discount.instance.cntTable" | grep -v v1 | sed 's/\.\.\/data\/TET\///' | sort > discountTable
+#find ../data/TET.bowtie -name "*cntTable2" | sed 's/\.\.\/data\/TET.bowtie\///' | sort > cntTable2
+#find ../data/TET.bowtie -name "*discount.instance.cntTable" | grep -v v1 | sed 's/\.\.\/data\/TET.bowtie\///' | sort > discountTable
 #split -l 35 cntTable2  raw.
 #split -l 35 discountTable  disc.
-##rm cntTable2 discountTable
+#rm cntTable2 discountTable
 #
 #Rscript discount.parallel.r raw.aa disc.aa &> aa.log &
 #Rscript discount.parallel.r raw.ab disc.ab &> ab.log &
@@ -42,7 +42,7 @@
 #Rscript discount.parallel.r raw.as disc.as &> as.log &
 #Rscript discount.parallel.r raw.at disc.at &> at.log &
 #
-cat maxdiff.instance.raw.a*.txt > maxdiff.instance.txt &
-cat L1HSdiff.instance.raw.a*.txt > L1HSdiff.instance.txt &
+cat maxdiff.instance.raw.a*.txt > maxdiff.instance.bowtie.txt &
+cat L1HSdiff.instance.raw.a*.txt > L1HSdiff.instance.bowtie.txt &
  
 

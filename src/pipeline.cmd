@@ -84,6 +84,16 @@ Rscript david.r result.rsem.TET.uniq/gene2oldLINE/
 Rscript L1HSstatistics.r data/rsem data/TET.bowtie &> TET.bowtie.log 
 Rscript makeHeatmap.r result.rsem.TET.bowtie &> heatmap.bowtie.log 
 Rscript gene2L1HS.r result.rsem.TET.bowtie &> lmbowtie.log 
+Rscript gene2LINE.coef.r result.rsem.TET.bowtie/gene2L1HS 0.05
+Rscript gene2LINE.coef.r result.rsem.TET.bowtie/gene2oldLINE 0.05
+
+bash finddupsnrank.sh ../result.rsem.TET.bowtie/gene2L1HS/
+Rscript clusterprofiler.r result.rsem.TET.bowtie/gene2L1HS/
+Rscript david.r result.rsem.TET.bowtie/gene2L1HS/
+
+bash finddupsnrank.sh ../result.rsem.TET.bowtie/gene2oldLINE/
+Rscript clusterprofiler.r result.rsem.TET.bowtie/gene2oldLINE/
+Rscript david.r result.rsem.TET.bowtie/gene2oldLINE/
 
 Rscript WGCNA.L1HS.tissueconsensus.r result.rsem.TET.bowtie
 Rscript WGCNA.L1HS.bytissue.r result.rsem.TET.bowtie/ BLCA bladder 8 &> wgcna.BLCA.log &

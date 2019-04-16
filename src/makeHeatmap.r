@@ -73,7 +73,7 @@ annotation_data <- cbind.data.frame(annotation_data,broadertype)
 #qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
 #col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
 col_vector = c("#e6194b", "#3cb44b", "#ffe119", "#0082c8", "#f58231", "#911eb4", "#46f0f0", "#f032e6", "#d2f53c", "#fabebe", "#008080", "#e6beff", "#aa6e28", "#fffac8", "#800000", "#aaffc3", "#808000", "#ffd8b1", "#000080", "#808080", "#FFFFFF", "#000000")
-col_vector2 = c("#e6194b", "#3cb44b", "#ffe119", "#0082c8", "#f58231", "#911eb4", "#46f0f0", "#008080", "#aa6e28", "#aaffc3", "#808000", "#ffd8b1", "#000080", "#808080", "#FFFFFF", "#000000")
+col_vector2 = c("#e6194b", "#3cb44b", "#ffe119", "#0082c8", "#f58231", "#911eb4", "#d2f53c", "#fabebe", "#e6beff", "#800000", "#ffd8b1", "#000080", "#808080", "#FFFFFF", "#000000")
 
 mycolors=list(tissue = col_vector[1:length(levels(annotation_data$tissue))], 
               broadertype = col_vector2[1:length(levels(annotation_data$broadertype))])

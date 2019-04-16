@@ -14,7 +14,8 @@ setwd(workingDir);
 # Load the WGCNA package
 #library(DESeq2)
 library(WGCNA);
-
+library("ComplexHeatmap")
+library("circlize")
 library("RDAVIDWebService")
 library("ReactomePA")
 library(org.Hs.eg.db)
@@ -598,6 +599,47 @@ sum(is.na(gene2annot[geneidx]))
 
 
 consMEs.unord = multiSetMEs(multiExpr, universalColors = moduleLabels, excludeGrey = TRUE)
+MET = consensusOrderMEs(consMEs.unord);
+pdf(file = paste0(resultdir, "WGCNA/consensus/Plots/EigengeneNetworks.pdf"), width= 12, height = 12);
+par(cex = 0.9)
+
+  for (set in 1:nSets) {
+    greyLabel = 0
+      labels = names(MET[[set]]$data)
+      uselabels = labels[substring(labels, 3) != greyLabel]
+      corME = cor(MET[[set]]$data[substring(labels, 
+            3) != greyLabel, substring(labels, 3) != greyLabel], 
+          use = "p")
+      disME = as.dist(1 - corME)
+      clust = fastcluster::hclust(disME, method = "average")
+      main = setLabels[set]
+      plotLabels = uselabels
+      plot(clust, main = main, sub = "", xlab = "", labels = plotLabels, 
+          ylab = "", ylim = c(0, 1))
+  }
+dev.off()
+
+# plot heatmap
+pdf(file = paste0(resultdir, "WGCNA/consensus/Plots/EigengeneHeatmaps.pdf"), width= 12, height = 12);
+for (set in 1:nSets) {
+  corME = cor(MET[[set]]$data, use = "p")
+  pME = corPvalueFisher(corME, nrow(MET[[set]]$data))
+      labeledHeatmap(corME, names(MET[[set]]$data), 
+      names(MET[[set]]$data), main = setLabels[[set]], invertColors = FALSE, 
+      zlim = c(-1, 1), colorLabels = FALSE 
+      )
+}
+
+dev.off();
+
+
+# write moduleEigengenes
+for (set in 1:nSets) {
+  eigenGenes = MET[[set]]$data
+  rownames(eigenGenes) = rownames(multiExpr[[set]]$data);
+  write.table(eigenGenes, paste0(resultdir, "WGCNA/consensus/", paste0("moduleEigengenes.",setLabels[[set]],".txt")), quote=FALSE, row.names=TRUE, sep="\t")
+}
+
 GS = list();
 kME = list();
 for (set in 1:nSets)
@@ -631,26 +673,42 @@ kME.metaP = 2*pnorm(abs(kME.metaZ), lower.tail = FALSE);
 GSmat = do.call(rbind, lapply(GS, "[[", "cor")) 
 GSmat = rbind(GSmat, do.call(rbind, lapply(GS, "[[", "p")))
 GSmat = rbind(GSmat, GS.metaZ, GS.metaP); 
+GSsmall = rbind(GS.metaZ, GS.metaP)
 traitNames = c("L1HS", "oldLINE")
 #nTraits = checkSets(Traits)$nGenes
 nTraits = length(traitNames)
 dim(GSmat) = c(nGenes, (2*nSets+2)*nTraits)
+dim(GSsmall) = c(nGenes, 2*nTraits)
 rownames(GSmat) = genenames;
+rownames(GSsmall) = genenames;
 colnames(GSmat) = spaste(
     c(paste0("GS.set", 1:11), paste0("p.GS.set", 1:11), "Z.GS.meta.", "p.GS.meta"), 
     rep(traitNames, rep((2*nSets+2), nTraits)))
+colnames(GSsmall) = spaste(c("Z.GS.meta.", "p.GS.meta"),rep(traitNames, rep(2, nTraits)))
+
+
+
 # Same code for kME:
 #kMEmat = rbind(kME[[1]]$cor, kME[[2]]$cor, kME[[1]]$p, kME[[2]]$p, kME.metaZ, kME.metaP);
-kMEmat = do.call(rbind, lapply(kME, "[[", "cor")) 
-kMEmat = rbind(kMEmat, do.call(rbind, lapply(kME, "[[", "p")))
+kMEcor = do.call(rbind, lapply(kME, "[[", "cor")) 
+kMEmat = rbind(kMEcor, do.call(rbind, lapply(kME, "[[", "p")))
 kMEmat = rbind(kMEmat, kME.metaZ, kME.metaP); 
+kMEsmall = rbind(kME.metaZ, kME.metaP);
 MEnames = colnames(consMEs.unord[[1]]$data);
 nMEs = checkSets(consMEs.unord)$nGenes
+dim(kMEcor) = c(nGenes, nSets*nMEs)
 dim(kMEmat) = c(nGenes, (2*nSets+2)*nMEs)
+dim(kMEsmall) = c(nGenes, 2*nMEs)
+rownames(kMEcor) = genenames;
 rownames(kMEmat) = genenames;
+rownames(kMEsmall) = genenames;
+colnames(kMEcor) = outer(c(paste0("kME.set", 1:11)), MEnames, FUN = "paste0")[1:(nSets*nMEs)] 
 colnames(kMEmat) = spaste(
     c(paste0("kME.set", 1:11), paste0("p.kME.set", 1:11), "Z.kME.meta.", "p.kME.meta"), 
     rep(MEnames, rep((2*nSets+2), nMEs)))
+colnames(kMEsmall) = spaste(
+    c("Z.kME.meta.", "p.kME.meta"), 
+    rep(MEnames, rep(2, nMEs)))
 
 
 #=====================================================================================
@@ -672,13 +730,210 @@ getClusterSymbols <- function (termCluster) {
   return (clustersymbols)
 }
 
-info = data.frame(Gene = genenames, GeneSymbol = annot$GENE[gene2annot],
+info.GS = data.frame(Gene = genenames, GeneSymbol = annot$GENE[gene2annot],
              EntrezID = annot$ENTREZID[gene2annot],
              ModuleLabel = moduleLabels,
              ModuleColor = labels2colors(moduleLabels),
-             GSmat,
-             kMEmat);
-write.csv(info, file = paste0(resultdir, "WGCNA/consensus/consensusAnalysis-CombinedNetworkResults.csv"), row.names = FALSE, quote = FALSE);
+             GSsmall);
+write.csv(info.GS, file = paste0(resultdir, "WGCNA/consensus/small.GS.csv"), row.names = FALSE, quote = FALSE);
+
+info.kME = data.frame(Gene = genenames, GeneSymbol = annot$GENE[gene2annot],
+             EntrezID = annot$ENTREZID[gene2annot],
+             ModuleLabel = moduleLabels,
+             ModuleColor = labels2colors(moduleLabels),
+             kMEsmall);
+info.kME.cor = data.frame(Gene = genenames, GeneSymbol = annot$GENE[gene2annot],
+             EntrezID = annot$ENTREZID[gene2annot],
+             ModuleLabel = moduleLabels,
+             ModuleColor = labels2colors(moduleLabels),
+             kMEcor);
+write.csv(info.kME, file = paste0(resultdir, "WGCNA/consensus/small.kMEmat.csv"), row.names = FALSE, quote = FALSE);
+write.csv(info.kME.cor, file = paste0(resultdir, "WGCNA/consensus/kME.membership.csv"), row.names = FALSE, quote = FALSE);
+
+
+# plot genes correlated with TEs
+plotGeneIdx = rep(FALSE, nGenes)
+# find modules with more than 50% transposons 
+# write a BED file of TSS's (+-1kb window) of genes in the TE modules
+TSS = read.table(paste0(datadir, "TCGA.TSS.uniq.txt"), header=TRUE, sep="\t");
+rownames(TSS) = paste(TSS[,1], TSS[,2], sep="|")
+ 
+TEmodules = c()
+for( i in modulenumbers) {
+  genesinmodule = (info.kME.cor$ModuleLabel == i)
+  TEsinmodule = genesinmodule & grepl(":", info.kME.cor$Gene)
+  if (sum(TEsinmodule) > sum(genesinmodule)*0.5) {
+    TEmodules = c(TEmodules, i)
+  }
+}
+genesinTEmodules = info.kME.cor$ModuleLabel %in% TEmodules 
+consistenttissues = 1:nSets
+consistenttissues= consistenttissues[c(-1, -4, -5)] # let's remove bladder esophagus and head and neck
+for( i in TEmodules) {
+  importantgenes = rep(TRUE, nGenes)
+  for (set in consistenttissues) {
+    collabel = paste0("kME.set", set, "ME", i)
+    FilterGenes= kMEcor[,collabel]>.8
+    write.table(info.kME.cor[FilterGenes, 1:5], file = paste0(resultdir, "WGCNA/consensus/TEmodule.", i, ".", setLabels[set], ".highMMgenes.txt"), row.names = FALSE, quote = FALSE)
+
+    FilterGenes= kMEcor[,collabel]>.6
+    importantgenes = importantgenes & FilterGenes
+  }
+  write.table(info.kME.cor[importantgenes, 1:5], file = paste0(resultdir, "WGCNA/consensus/TEmodule.", i, ".consensus.highMMgenes.txt"), row.names = FALSE, quote = FALSE)
+  plotGeneIdx = plotGeneIdx | importantgenes # importantgenes are cor > 0.6 across all tissues 
+
+
+  importantTEs = importantgenes & grepl(":", info.kME.cor$Gene)
+  importantgenes = importantgenes & !grepl(":", info.kME.cor$Gene)
+  TSS.importantgenes = TSS[info.kME.cor[importantgenes,1],]
+  TSS.importantgenes$start = TSS.importantgenes[,4]-1000
+  TSS.importantgenes$end = TSS.importantgenes[,4]+1000
+  TSS.importantgenes$score = rep(".", nrow(TSS.importantgenes))
+  write.table(TSS.importantgenes[,c(3, 6, 7, 1, 8, 5)], file = paste0(resultdir, "WGCNA/consensus/TEmodule.", i, ".TSS.bed"), row.names = FALSE, quote = FALSE, sep="\t")
+
+}
+plotGeneIdx.pos = plotGeneIdx
+write.table(info.kME.cor[plotGeneIdx.pos, 1:5], file = paste0(resultdir, "WGCNA/consensus/labeltree.pos.txt"), row.names = FALSE, quote = FALSE, sep="\t")
+
+for( i in c(TEmodules,36)) {  # now print bladder esophagus and head and neck including cluster 36 that is specific to these tissues
+  importantgenes = rep(TRUE, nGenes)
+  for (set in c(1,4,5)) {
+    collabel = paste0("kME.set", set, "ME", i)
+    FilterGenes= kMEcor[,collabel]>.8
+    write.table(info.kME.cor[FilterGenes, 1:5], file = paste0(resultdir, "WGCNA/consensus/TEmodule.", i, ".", setLabels[set], ".highMMgenes.txt"), row.names = FALSE, quote = FALSE)
+  }
+}
+
+
+# find modules negatively correlated with the TEmodules
+negTEmodules = c()
+for (set in 1:nSets) {
+  corME = cor(MET[[set]]$data, use = "p")
+  for (i in TEmodules) {
+    rowlabel = paste0("ME", i)
+    mcor = corME[rowlabel,]
+    negcoridx = mcor < -0.7
+    negTEmodules = c(negTEmodules, modulenumbers[negcoridx])
+  }
+}
+negrank = rank(table(negTEmodules))
+negTEmodules = as.numeric(names(negrank[negrank == max(negrank)]))
+for( i in negTEmodules) {
+  importantgenes = rep(TRUE, nGenes)
+  for (set in consistenttissues) {
+    collabel = paste0("kME.set", set, "ME", i)
+    FilterGenes= kMEcor[,collabel]>.8
+    write.table(info.kME.cor[FilterGenes, 1:5], file = paste0(resultdir, "WGCNA/consensus/negTEmodule.", i, ".", setLabels[set], ".highMMgenes.txt"), row.names = FALSE, quote = FALSE)
+
+    FilterGenes= kMEcor[,collabel]>.6
+    importantgenes = importantgenes & FilterGenes
+  }
+  write.table(info.kME.cor[importantgenes, 1:5], file = paste0(resultdir, "WGCNA/consensus/negTEmodule.", i, ".consensus.highMMgenes.txt"), row.names = FALSE, quote = FALSE)
+  plotGeneIdx = plotGeneIdx | importantgenes 
+
+  importantTEs = importantgenes & grepl(":", info.kME.cor$Gene)
+  importantgenes = importantgenes & !grepl(":", info.kME.cor$Gene)
+  TSS.importantgenes = TSS[info.kME.cor[importantgenes,1],]
+  TSS.importantgenes$start = TSS.importantgenes[,4]-1000
+  TSS.importantgenes$end = TSS.importantgenes[,4]+1000
+  TSS.importantgenes$score = rep(".", nrow(TSS.importantgenes))
+  write.table(TSS.importantgenes[,c(3, 6, 7, 1, 8, 5)], file = paste0(resultdir, "WGCNA/consensus/negTEmodule.", i, ".TSS.bed"), row.names = FALSE, quote = FALSE, sep="\t")
+
+
+}
+plotGeneIdx.neg = plotGeneIdx
+plotGeneIdx.neg[plotGeneIdx.pos] = FALSE
+write.table(info.kME.cor[plotGeneIdx.neg, 1:5], file = paste0(resultdir, "WGCNA/consensus/labeltree.neg.txt"), row.names = FALSE, quote = FALSE, sep="\t")
+
+
+pdf(file = paste0(resultdir, "WGCNA/consensus/Plots/heatmap.pdf"), width = 12, height = 12);
+power=6
+color1=moduleColors
+restGenes= (color1 != "grey")
+restGenes = genesinTEmodules
+for (set in 1:nSets)
+{
+  datExpr = multiExpr[[set]]$data
+  # The following shows the correlations between the top genes
+  plotGenes = names(datExpr)[plotGeneIdx]
+  match1 = match(plotGenes, colnames(datExpr))
+  match1 = match1[!is.na(match1)]
+  nGenes = length(match1)
+
+  datErest = datExpr[, match1]
+  ADJ1 = adjacency(datErest, weights = NULL, power = 1, 
+      type = "signed")
+  corrmat = 2*ADJ1 - 1
+  diss1 = 1 - ADJ1
+  diag(diss1) = NA
+  hier1 = hclust(as.dist(diss1), method = "ave")
+
+  #mat = datErest
+  #mat <- mat - rowMeans(mat)
+  #diss1 = dist(t(mat))
+  #hier1 = hclust(d = diss1, method = "ave")
+
+  labeltree = names(data.frame(datErest)) # rownames and colnames
+  labelrow = names(data.frame(datErest))
+  labelrow[hier1$order[length(labeltree):1]] = labelrow[hier1$order]
+  #write.table(labeltree, file = paste0(resultdir, "WGCNA/consensus/heatmap.labeltree.", setLabels[set], ".txt"))
+  write.table(labelrow, file = paste0(resultdir, "WGCNA/consensus/heatmap.labelrow.", setLabels[set], ".txt"))
+
+  TE = grepl(":", labeltree)
+  TE[grepl(".DNA$", labeltree)] = 2
+  TE[grepl(".HERV$", labeltree)] = 3
+  TE[grepl(".LTR$", labeltree)] = 4
+  TE[grepl(".SINE$", labeltree)] = 5
+  TE[grepl(".LINE$", labeltree)] = 6
+  TE = as.factor(TE)
+
+  genes = rep(0, length(labeltree))
+  labeltreegenenames = unlist(lapply(strsplit(labeltree, "[.]"), `[[`, 1))
+  ZFPs = read.table(paste0(datadir, "/ZNF/ZNFlist.txt"), header=FALSE)
+  ZFPs = ZFPs[[1]]
+  ZFPs = substr(ZFPs, 1, nchar(ZFPs)-4) 
+  ZFPs = sub("[|]", ".", ZFPs)
+  ZFPmatch = match(labeltree, ZFPs)
+  genes[!is.na(ZFPmatch)] = 1
+  #ribosome = read.table(paste0(datadir, "/GO_ribosome.msigDB.txt"), header=TRUE, sep="\t")
+  ribosome = read.table(paste0(datadir, "/GO_Struct_Ribosome.msigDB.txt"), header=TRUE, sep="\t")
+  ribosome = ribosome[-1,]
+  ribomatch = match(labeltreegenenames, ribosome)
+  genes[!is.na(ribomatch)] = 3
+  mitochondria = read.table(paste0(datadir, "/GO_mitochondrion.msigDB.txt"), header=TRUE, sep="\t")
+  mitochondria = mitochondria[-1,]
+  mitomatch = match(labeltreegenenames, mitochondria)
+  genes[!is.na(mitomatch)] = 2
+  genes = as.factor(genes)
+  annotation_data <- cbind.data.frame(TE, genes)
+  
+  col_vector1 = c("lightgrey", "#e6194b", "#3cb44b", "#ffe119", "#0082c8", "#f58231", "#911eb4", "#d2f53c", "#fabebe", "#e6    beff", "#800000", "#ffd8b1", "#000080", "#808080", "#FFFFFF", "#000000")
+  col_vector2 = c("lightgrey", "yellowgreen", "orange", "purple", "#e6beff", "#800000", "#ffd8b1", "#000080", "#808080", "#FFFFFF", "#000000")
+  mycolors=list(TE = col_vector1[1:length(levels(annotation_data$TE))],
+                genes = col_vector2[1:length(levels(annotation_data$genes))])
+  names(mycolors$TE) <- levels(annotation_data$TE) 
+  names(mycolors$genes) <- levels(annotation_data$genes) 
+
+  ha = HeatmapAnnotation(annotation_data, col=mycolors)
+
+  dend = as.dendrogram(hier1)
+  #ht = Heatmap(as.matrix(diss1), cluster_rows = dend, row_dend_reorder = FALSE,
+  ht = Heatmap(as.matrix(corrmat), cluster_rows = dend, row_dend_reorder = FALSE,
+               name = "ht", cluster_columns = dend, column_dend_reorder = FALSE,
+               top_annotation = ha,
+               top_annotation_height = unit(4, "cm"),
+               show_row_names = FALSE, show_column_names = FALSE,
+  #             col = colorRamp2(c(0, 0.5, 1), c("blue", "#ffffbf", "red")),
+               col = colorRamp2(c(-1, 0, 1), c("blue", "#ffffbf", "red")),
+               column_title = "")
+
+  draw(ht)
+}
+dev.off()
+
+
+
+
 
 interestingmodules = which((is.na(consensusCor[,1])&is.na(consensusCor[,2]))==FALSE)
 #for( i in modulenumbers[interestingmodules]) {
@@ -689,7 +944,7 @@ for( i in modulenumbers) {
 
   david<-DAVIDWebService(email="mira.han@unlv.edu", url="https://david.ncifcrf.gov/webservice/services/DAVIDWebService.DAVIDWebServiceHttpSoap12Endpoint/")
   setAnnotationCategories(david, getDefaultCategoryNames(david))
-  genelist <- info[info$ModuleLabel==i,"EntrezID"]
+  genelist <- info.kME[info.kME$ModuleLabel==i,"EntrezID"]
   result<-addList(david, genelist, idType="ENTREZ_GENE_ID", listName=paste("module", i, labels2colors(i)), listType="Gene")
   termCluster<-getClusterReport(david, type="Term")
   if (length(members(termCluster)) > 0) {
@@ -703,9 +958,9 @@ for( i in modulenumbers) {
 
 for( i in modulenumbers) {
   if (i == 0) {print ("skipping grey"); next;}
-  #reportFileName=paste0(resultdir, "WGCNA/bytissue/", shortname, "/", paste("termClusterReport",i,labels2colors(i),"txt",sep="."))
-  #if (file.exists(reportFileName)) {print (paste0("skipping ", reportFileName)); next}
-  genelist <- info[info$ModuleLabel==i,"EntrezID"]
+  reportFileName=paste0(resultdir, "WGCNA/bytissue/", shortname, "/", paste("termClusterReport",i,labels2colors(i),"txt",sep="."))
+  if (file.exists(reportFileName)) {print (paste0("skipping ", reportFileName)); next}
+  genelist <- info.kME[info.kME$ModuleLabel==i,"EntrezID"]
   genelist = genelist[!is.na(genelist)]
   x <- enrichPathway(gene=genelist, pvalueCutoff=0.05, readable=T)
   if (! is.null(x) && nrow(x)) {
@@ -735,50 +990,20 @@ for( i in modulenumbers) {
 # plot heatmap
 #==============================================
 
+pdf(file = paste0(resultdir, "WGCNA/consensus/Plots/TOMplot.pdf"), width = 12, height = 12);
 power=6
 color1=moduleColors
   restGenes= (color1 != "grey")
+  restGenes = genesinTEmodules
+for (set in 1:nSets)
+{
+datExpr = multiExpr[[set]]$data
 diss1=1-TOMsimilarityFromExpr( datExpr[, restGenes], power = 6 )
 hier1=hclust(as.dist(diss1), method="average" )
 diag(diss1) = NA;
-sizeGrWindow(7,7)
 TOMplot(diss1^4, hier1, as.character(color1[restGenes]),
-       main = "TOM heatmap plot, module genes" )
-
-
-power=6
-color1=moduleColors
-restGenes= (color1 != "grey")
-diss1=1-adjacency( datExpr[, restGenes], power = 6 )
-hier1=hclust(as.dist(diss1), method="average" )
-diag(diss1) = NA;
-sizeGrWindow(7,7)
-TOMplot(diss1^4, hier1, as.character(color1[restGenes]),
-       main = "Adjacency heatmap plot, module genes" )
-
-
-sizeGrWindow(7,7)
-topList=rank(NS1$p.Weighted,ties.method="first")<=30
-gene.names= names(datExpr)[topList]
-# The following shows the correlations between the top genes
-plotNetworkHeatmap(datExpr, plotGenes = gene.names,
-                 networkType="signed", useTOM=FALSE,
-                 power=1, main="signed correlations")
-
-sizeGrWindow(7,7)
-# The following shows the correlations between the top genes
-plotNetworkHeatmap(datExpr, plotGenes = gene.names,
-                 networkType="unsigned", useTOM=FALSE,
-                 power=1, main="signed correlations")
-
-sizeGrWindow(7,7)
-# The following shows the TOM heatmap in a signed network
-plotNetworkHeatmap(datExpr, plotGenes = gene.names,
-                 networkType="signed", useTOM=TRUE,
-                 power=12, main="C. TOM in a signed network")
-# The following shows the TOM heatmap in a unsigned network
-plotNetworkHeatmap(datExpr, plotGenes = gene.names,
-                 networkType="unsigned", useTOM=TRUE,
-                 power=6, main="D. TOM in an unsigned network")
+       main = setLabels[[set]] )
+}
+dev.off()
 
 
