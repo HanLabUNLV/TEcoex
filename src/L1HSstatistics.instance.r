@@ -1,7 +1,7 @@
 library(stringr)
 library(ggplot2)
 library(DESeq2)
-library(reshape2)
+library(pheatmap)
 
 #library("RColorBrewer")
 # library("DESeq2")
@@ -25,8 +25,8 @@ if (length(args)==2) {
     TEdatadir = paste0(TEdatadir, "/")
   }
 }
-resultdir = paste0("result.", unlist(str_split(genedatadir, "/"))[2], ".", unlist(str_split(TEdatadir, "/"))[2], ".instance.L1HS",  "/")
-generesultdir = str_replace(resultdir, ".instance.L1HS", "")
+resultdir = paste0("result.", unlist(str_split(genedatadir, "/"))[2], ".", unlist(str_split(TEdatadir, "/"))[2], ".instance",  "/")
+generesultdir = str_replace(resultdir, ".instance", "")
 dir.create(resultdir) 
 print(resultdir)
 print(generesultdir)
@@ -49,7 +49,7 @@ if (file.exists(paste0(resultdir,"ddsNew.RData"))) {
   cntmatrix = read.table(file=paste0(generesultdir,"cntmatrix.gene.txt"), header=TRUE, row.names=1, sep="\t", check.names = FALSE)
   
   # construct counts from discounted instances 
-  TEinstances <- read.table(paste0(TEdatadir, "L1HS.new.maxgt5.txt"), header=TRUE, row.names=1, sep="\t", check.names=FALSE)
+  TEinstances <- read.table(paste0(TEdatadir, "rawcnts.new.maxgt5.txt"), header=TRUE, row.names=1, sep="\t", check.names=FALSE)
   t_TEinstances = t(TEinstances)
   rownames(t_TEinstances) <- colnames(TEinstances)
   t_cntmatrix = t(cntmatrix)
@@ -117,31 +117,4 @@ if (file.exists(paste0(resultdir,"ddsNew.RData"))) {
 
 
 
-  coldata = colData(ddsnew)
-  ddsnewcnts = counts(ddsnew, normalized=TRUE)
-  TEidx = grepl("L1HS", row.names(ddsnewcnts))
-  t_L1HS <- t(ddsnewcnts[TEidx,])
-  L1HSdata = cbind.data.frame(coldata, t_L1HS)
-  L1HSdata = cbind.data.frame(L1HSdata, rowSums(t_L1HS))
-  
-
-  dodge <- position_dodge(width = 0.6)
-  ggplot(L1HSdata, aes(x=tissue, y=rowSums(t_L1HS))) + geom_violin(position = dodge, draw_quantiles = 0.5) 
-  ggsave(paste0(resultdir, 'violin.bytype.pdf'), width = 20, height = 7, dpi=600)
-
-  L1HS_ESCA = L1HSdata[L1HSdata$tissue == "ESCA",]
-  L1HS_STAD = L1HSdata[L1HSdata$tissue == "STAD",]
-  L1HS_THCA = L1HSdata[L1HSdata$tissue == "THCA",]
-  L1HS_UCEC = L1HSdata[L1HSdata$tissue == "UCEC",]
-  L1HS_fourtissues = rbind.data.frame(L1HS_ESCA, L1HS_STAD, L1HS_THCA, L1HS_UCEC)
-  fourtissuesums <- colSums(L1HS_fourtissues[,34:146])
-  activeL1s <- names(fourtissuesums[fourtissuesums > 10])
-  L1HS_fourtissue_activeL1s <- cbind.data.frame(L1HS_fourtissues[,1:33],L1HS_fourtissues[,activeL1s])
-  L1HS_four <- melt(L1HS_fourtissue_activeL1s)
-  L1HS_four <- L1HS_four[L1HS_four$variable != "sizeFactor",]
-  L1HS_four <- L1HS_four[L1HS_four$variable != "rowSums(t_L1HS)",]
-
-  ggplot(L1HS_four, aes(x=variable, y=value, colour=tissue)) + geom_point(position = dodge)  +
-    theme(axis.text.x = element_text(angle = 90, hjust = 1))
-  ggsave(paste0(resultdir, 'violin.byinstance.pdf'), width = 48, height = 4, dpi=600)
 
