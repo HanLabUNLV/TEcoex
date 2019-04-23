@@ -313,11 +313,12 @@ colnames(oldLINE) <- colnames(L1HS_bytype[,c(36, 1, 2)])
 L1HS_5prime = read.table(paste0(TEdatadir, "L1HS5prime.300.txt"), header=FALSE, sep="\t", stringsAsFactor=FALSE)
 rownames(L1HS_5prime)= L1HS_5prime[,1]
 L1HS_5prime = L1HS_5prime[as.character(L1HS_bytype$patient),]
+L1HS_5prime[,2] = L1HS_5prime[,2]/L1HS_bytype$sizeFactor
 
 stopifnot(! any(rownames(L1HS_5prime)!=L1HS_bytype$patient))
-L1HS_5prime <- cbind(log2(L1HS_5prime[,2]), L1HS_bytype[,c(1,2,4,5)])
+L1HS_5prime <- cbind(log2(L1HS_5prime[,2]), L1HS_bytype)
 L1HS_5prime[L1HS_5prime[,1]<0,1] = -1
-colnames(L1HS_5prime) <- colnames(L1HS_bytype[,c(36, 1,2,4,5)])
+colnames(L1HS_5prime)[1] <- "VSTcnts"
 write.table(L1HS_5prime, file=paste0(resultdir,"L1HS5prime.VST.txt"), quote=FALSE, row.names=TRUE, sep="\t")
 L1HS_5prime <- L1HS_5prime[,1:3]
 

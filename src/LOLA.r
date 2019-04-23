@@ -21,7 +21,7 @@ expuniqnoovpTEs = readBed("/data2/han_lab/mobiledna/result.rsem.TET.instance/gen
 locResults = runLOLA(userSets, expuniqnoovpTEs, regionDB, cores=1)
 locResults
 
-coreDB = regionDB = loadRegionDB("LOLACore/hg19")
+#coreDB = regionDB = loadRegionDB("LOLACore/hg19")
 coreDB = loadRegionDB("/data2/han_lab/database/LOLA/LOLACore/hg19")
 testresults = runLOLA(userSets, expuniqnoovpTEs, coreDB, cores=1)
 testresults

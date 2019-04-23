@@ -91,7 +91,8 @@ traitData[traitData$tissue == "KIRP", "newtype"] = "KICHKIRCKIRP"
 traitData[traitData$tissue == "LUSC", "newtype"] = "LUADLUSC"
 traitData[traitData$tissue == "LUAD", "newtype"] = "LUADLUSC"
 
-colnames(traitData)[colnames(traitData) == "VSTcnts"] = "L1HS"
+colnames(traitData)[colnames(traitData) == "VSTcnts"] = "L1HS.5prime"
+colnames(traitData)[colnames(traitData) == "VSTcnts.1"] = "L1HS"
 colnames(traitData)[colnames(traitData) == "oldLINEVST"] = "oldLINE"
 dim(traitData)
 names(traitData)
@@ -409,20 +410,20 @@ for (set in 1:nSets)
 
 # linear model with covariate
   rownames(consMEs[[set]]$data) = rownames(multiExpr[[set]]$data);
-  module2L1HS = lm_module2L1HS(consMEs[[set]]$data, Traits[[set]]$data, paste0(resultdir, "WGCNA/consensus/"))
-  module2oldLINE = lm_module2oldLINE(consMEs[[set]]$data, Traits[[set]]$data,  paste0(resultdir, "WGCNA/consensus/"))
+  module2L1HS = lm_module2trait(consMEs[[set]]$data, Traits[[set]]$data, paste0(resultdir, "WGCNA/consensus/"), "L1HS.5prime")
+  module2oldLINE = lm_module2trait(consMEs[[set]]$data, Traits[[set]]$data,  paste0(resultdir, "WGCNA/consensus/"), "oldLINE")
 
   setModuleTraitCor = data.matrix(cbind(module2L1HS$moduleexp_coef, module2oldLINE$moduleexp_coef))
   rownames(setModuleTraitCor) = colnames(consMEs[[set]]$data)
-  colnames(setModuleTraitCor) = c("L1HS", "oldLINE")
+  colnames(setModuleTraitCor) = c("L1HS.5prime", "oldLINE")
   
   setModuleTraitPvalue = data.matrix(cbind(module2L1HS$moduleexp_pval, module2oldLINE$moduleexp_pval))
   rownames(setModuleTraitPvalue) = colnames(consMEs[[set]]$data)
-  colnames(setModuleTraitPvalue) = c("L1HS", "oldLINE")
+  colnames(setModuleTraitPvalue) = c("L1HS.5prime", "oldLINE")
 
   setModuleTraitEta2 = data.matrix(cbind(module2L1HS$partialeta2, module2oldLINE$partialeta2))
   rownames(setModuleTraitEta2) = colnames(consMEs[[set]]$data)
-  colnames(setModuleTraitEta2) = c("L1HS", "oldLINE")
+  colnames(setModuleTraitEta2) = c("L1HS.5prime", "oldLINE")
 
   moduleTraitCor[[set]] = setModuleTraitCor;
   moduleTraitPvalue[[set]] = setModuleTraitPvalue;
@@ -462,7 +463,7 @@ colorlevel = sign(moduleTraitCor[[set]])*moduleTraitEta2[[set]]
 #print(moduleTraitEta2[[set]])
 #print(colorlevel)
 labeledHeatmap(Matrix = colorlevel,
-               xLabels = c("L1HS", "oldLINE"),
+               xLabels = c("L1HS.5prime", "oldLINE"),
                yLabels = MEnumeric,
                ySymbols = MEnumeric,
                colorLabels = FALSE,
@@ -560,7 +561,7 @@ par(mar = c(6, 8.8, 3, 2.2));
 zlimit = ceiling(max(abs(consensusEta2), na.rm=TRUE))
 colorlevel = sign(consensusCor)*consensusEta2
 labeledHeatmap(Matrix = colorlevel,
-               xLabels = c("L1HS", "oldLINE"),
+               xLabels = c("L1HS.5prime", "oldLINE"),
                yLabels = MEnumeric,
                ySymbols = MEnumeric,
                colorLabels = TRUE,
@@ -644,7 +645,7 @@ GS = list();
 kME = list();
 for (set in 1:nSets)
 {
-  GS[[set]] = corAndPvalue(multiExpr[[set]]$data, Traits[[set]]$data[,c("L1HS", "oldLINE")]);
+  GS[[set]] = corAndPvalue(multiExpr[[set]]$data, Traits[[set]]$data[,c("L1HS.5prime", "oldLINE")]);
   kME[[set]] = corAndPvalue(multiExpr[[set]]$data, consMEs.unord[[set]]$data);
 }
 
@@ -674,7 +675,7 @@ GSmat = do.call(rbind, lapply(GS, "[[", "cor"))
 GSmat = rbind(GSmat, do.call(rbind, lapply(GS, "[[", "p")))
 GSmat = rbind(GSmat, GS.metaZ, GS.metaP); 
 GSsmall = rbind(GS.metaZ, GS.metaP)
-traitNames = c("L1HS", "oldLINE")
+traitNames = c("L1HS.5prime", "oldLINE")
 #nTraits = checkSets(Traits)$nGenes
 nTraits = length(traitNames)
 dim(GSmat) = c(nGenes, (2*nSets+2)*nTraits)

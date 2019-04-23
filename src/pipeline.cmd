@@ -31,7 +31,7 @@ Rscript WGCNA.L1HS.bytissue.r result.rsem.TET/ UCEC endometrium 12 &> wgcna.UCEC
 
 ##################### TEtranscript instance ########################
 filterinstancecnts.sh ../data/TET
-ovp.sh TET 1000
+ovp.sh TET 10000
 Rscript L1HSstatistics.instance.r &> instance.log 
 Rscript makeHeatmap.r result.rsem.TET.instance &> heatmap.instance.log 
 Rscript makeHeatmap.r result.rsem.TET.instance noovp &> heatmap.instance.noovp.log 
@@ -109,7 +109,7 @@ Rscript WGCNA.L1HS.bytissue.r result.rsem.TET.bowtie/ THCA thyroid 20 &> wgcna.T
 Rscript WGCNA.L1HS.bytissue.r result.rsem.TET.bowtie/ UCEC endometrium 12 &> wgcna.UCEC.log &
 
 filterinstancecnts.sh ../data/TET.bowtie/
-ovp.sh TET.bowtie 1000
+ovp.sh TET.bowtie 10000
 Rscript L1HSstatistics.instance.r data/rsem/ data/TET.bowtie/ &> bowtie.instance.log 
 Rscript makeHeatmap.r result.rsem.TET.bowtie.instance &> heatmap.bowtie.instance.log 
 Rscript makeHeatmap.r result.rsem.TET.bowtie.instance noovp &> heatmap.bowtie.instance.noovp.log 

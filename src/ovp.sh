@@ -19,7 +19,7 @@ awk -F"	" -v buf="${buffer}" '{if ($5+0 < buf+0) {beg=1} else {beg=0+$5-buf;} pr
 
 
 bedtools intersect -wa -v -a /tmp/exp.TE.bed -b /tmp/all.gene.bed -sorted > ../result.rsem.${TEdatadir}.instance/exp.TE.gene.$buffer.noovp
-awk '{print $1"\t"$2"\t"$3"\t"$4}' ../result.rsem.${TEdatadir}.instance/exp.TE.gene.$buffer.noovp | sort | uniq > ../result.rsem.${TEdatadir}.instance/gene.noovp.TEs.bed
-bedtools intersect -wa -a ../result.rsem.${TEdatadir}.instance/gene.noovp.TEs.bed -b ~/storage/TETranscript/gtf/hg19/hg19_rmsk_uniq.bed | sort | uniq > ../result.rsem.${TEdatadir}.instance/gene.noovp.uniq.TEs.bed
+awk '{print $1"\t"$2"\t"$3"\t"$4}' ../result.rsem.${TEdatadir}.instance/exp.TE.gene.$buffer.noovp | sort | uniq > ../result.rsem.${TEdatadir}.instance/gene.noovp.$buffer.TEs.bed
+bedtools intersect -wa -a ../result.rsem.${TEdatadir}.instance/gene.noovp.$buffer.TEs.bed -b ~/storage/TETranscript/gtf/hg19/hg19_rmsk_uniq.bed | sort | uniq > ../result.rsem.${TEdatadir}.instance/gene.noovp.$buffer.uniq.TEs.bed
 
 

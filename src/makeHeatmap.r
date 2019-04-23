@@ -24,27 +24,44 @@ print(b_noovp)
 load(file = "ddsNew.RData")
 load(file = "VSTcnts.DEGES.RData")
 
-TEs <- grep(":", rownames(VSTcnts))
-geneVSTcnts <- VSTcnts[-TEs,]
+print(dim(VSTcnts))
+TEs <- grepl(":", rownames(VSTcnts))
+geneVSTcnts <- VSTcnts[!TEs,]
+TEcnts <- VSTcnts[TEs,]
 if (grepl("instance", resultdir) && (! is.na(b_noovp)) && (b_noovp == "noovp")) {
-  filters = read.table("gene.noovp.uniq.TEs.bed", sep="\t")
+  filters = read.table("gene.noovp.10000.TEs.bed", sep="\t")
   filternames = as.character(filters[,4])
-  TEcnts <- VSTcnts[TEs,]
+  print(dim(TEcnts))
   TEnames <- rownames(TEcnts)
   TElocus = matrix(unlist(strsplit(TEnames, ":")), ncol=5, byrow=TRUE)[,1]
   rownames(TEcnts) = TElocus
   names(TEnames) = TElocus
   filteredTEcnts <- TEcnts[filternames,]
+  print(dim(filteredTEcnts))
   filteredTEnames <- TEnames[filternames]
   rownames(filteredTEcnts) = filteredTEnames
-  rm(VSTcnts)
-  VSTcnts = rbind(geneVSTcnts, filteredTEcnts)
+  #rm(VSTcnts)
+  #VSTcnts = rbind(geneVSTcnts, filteredTEcnts)
+} else {
+  filteredTEcnts = TEcnts
 }
-lineVSTcnts <- VSTcnts[grep("LINE", rownames(VSTcnts)), ]
-sineVSTcnts <- VSTcnts[grep("SINE", rownames(VSTcnts)), ]
-dnaVSTcnts <- VSTcnts[grep("DNA", rownames(VSTcnts)), ]
-ltrVSTcnts <- VSTcnts[grep("LTR", rownames(VSTcnts)), ]
-hervVSTcnts <- VSTcnts[grep("HERV", rownames(VSTcnts)), ]
+
+lineVSTcnts <- filteredTEcnts[grepl("LINE", rownames(filteredTEcnts)), ]
+print(dim(lineVSTcnts))
+sineVSTcnts <- filteredTEcnts[grepl("SINE", rownames(filteredTEcnts)), ]
+print(dim(sineVSTcnts))
+dnaVSTcnts <- filteredTEcnts[grepl("DNA", rownames(filteredTEcnts)), ]
+print(dim(dnaVSTcnts))
+ltrVSTcnts <- filteredTEcnts[grepl("LTR", rownames(filteredTEcnts)), ]
+print(dim(ltrVSTcnts))
+hervVSTcnts <- filteredTEcnts[grepl("HERV", rownames(filteredTEcnts)), ]
+print(dim(hervVSTcnts))
+youngL1idx <- grepl("L1HS", rownames(filteredTEcnts))
+youngL1idx <- youngL1idx | grepl("L1PA2_", rownames(filteredTEcnts))
+youngL1idx <- youngL1idx | grepl("L1PA3_", rownames(filteredTEcnts))
+youngL1VSTcnts <- filteredTEcnts[youngL1idx, ]
+print(dim(youngL1VSTcnts))
+print (rownames(youngL1VSTcnts))
 
 # annotation
 coldataNew = colData(ddsnew)
@@ -159,5 +176,5 @@ print(mean(rnMI))
   plotheatmap(dnaVSTcnts, paste0("DNAheatmapTop150Var", b_noovp, ".pdf"), 150)
   plotheatmap(ltrVSTcnts, paste0("LTRheatmapTop150Var", b_noovp, ".pdf"), 150)
   plotheatmap(hervVSTcnts, paste0("HERVheatmapTop150Var", b_noovp, ".pdf"), 150)
-
+  plotheatmap(youngL1VSTcnts, paste0("youngL1heatmapTop150Var", b_noovp, ".pdf"), 150)
 
