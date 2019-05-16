@@ -24,12 +24,21 @@ print(b_noovp)
 load(file = "ddsNew.RData")
 load(file = "VSTcnts.DEGES.RData")
 
+# filter ESCA STAD
+cdata <- colData(ddsnew)
+sampleidx = rep(TRUE, ncol(VSTcnts))
+ESCASTADidx = (cdata$tissue == "ESCA") | (cdata$tissue == "STAD")
+sampleidx = !ESCASTADidx
+VSTcnts = VSTcnts[,sampleidx]
+coldataNew = colData(ddsnew)
+coldataNew = coldataNew[sampleidx,]
+
 print(dim(VSTcnts))
 TEs <- grepl(":", rownames(VSTcnts))
 geneVSTcnts <- VSTcnts[!TEs,]
 TEcnts <- VSTcnts[TEs,]
 if (grepl("instance", resultdir) && (! is.na(b_noovp)) && (b_noovp == "noovp")) {
-  filters = read.table("gene.noovp.10000.TEs.bed", sep="\t")
+  filters = read.table("gene.noovp.100000.TEs.bed", sep="\t")
   filternames = as.character(filters[,4])
   print(dim(TEcnts))
   TEnames <- rownames(TEcnts)
@@ -45,6 +54,8 @@ if (grepl("instance", resultdir) && (! is.na(b_noovp)) && (b_noovp == "noovp")) 
 } else {
   filteredTEcnts = TEcnts
 }
+
+
 
 lineVSTcnts <- filteredTEcnts[grepl("LINE", rownames(filteredTEcnts)), ]
 print(dim(lineVSTcnts))
@@ -64,7 +75,6 @@ print(dim(youngL1VSTcnts))
 print (rownames(youngL1VSTcnts))
 
 # annotation
-coldataNew = colData(ddsnew)
 annotation_data <- as.data.frame(coldataNew$tissue)
 rownames(annotation_data) <- colnames(geneVSTcnts)
 colnames(annotation_data) <- "tissue"
@@ -89,7 +99,7 @@ annotation_data <- cbind.data.frame(annotation_data,broadertype)
 #colors
 #qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
 #col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
-col_vector = c("#e6194b", "#3cb44b", "#ffe119", "#0082c8", "#f58231", "#911eb4", "#46f0f0", "#f032e6", "#d2f53c", "#fabebe", "#008080", "#e6beff", "#aa6e28", "#fffac8", "#800000", "#aaffc3", "#808000", "#ffd8b1", "#000080", "#808080", "#FFFFFF", "#000000")
+col_vector = c("#e6194b", "#3cb44b", "#ffe119", "#0082c8", "#f58231", "#911eb4", "#46f0f0", "#f032e6", "#d2f53c", "#fabebe", "#008080", "#e6beff", "#aa6e28",  "#800000", "#fffac8", "#aaffc3",  "#808000", "#ffd8b1", "#000080", "#808080", "#FFFFFF", "#000000")
 col_vector2 = c("#e6194b", "#3cb44b", "#ffe119", "#0082c8", "#f58231", "#911eb4", "#d2f53c", "#fabebe", "#e6beff", "#800000", "#ffd8b1", "#000080", "#808080", "#FFFFFF", "#000000")
 
 mycolors=list(tissue = col_vector[1:length(levels(annotation_data$tissue))], 
@@ -170,11 +180,11 @@ print(mean(rnMI))
   }
 
 
-  plotheatmap(geneVSTcnts, paste0("geneheatmapTop150Var", b_noovp, ".pdf"), 150)
-  plotheatmap(lineVSTcnts, paste0("LINEheatmapTop150Var", b_noovp, ".pdf"), 150)
-  plotheatmap(sineVSTcnts, paste0("SINEheatmapTop150Var", b_noovp, ".pdf"), 150)
-  plotheatmap(dnaVSTcnts, paste0("DNAheatmapTop150Var", b_noovp, ".pdf"), 150)
-  plotheatmap(ltrVSTcnts, paste0("LTRheatmapTop150Var", b_noovp, ".pdf"), 150)
-  plotheatmap(hervVSTcnts, paste0("HERVheatmapTop150Var", b_noovp, ".pdf"), 150)
-  plotheatmap(youngL1VSTcnts, paste0("youngL1heatmapTop150Var", b_noovp, ".pdf"), 150)
+  plotheatmap(geneVSTcnts, paste0("geneheatmapTop150Var", b_noovp, "100k.pdf"), 150)
+  plotheatmap(lineVSTcnts, paste0("LINEheatmapTop150Var", b_noovp, "100k.pdf"), 150)
+  plotheatmap(sineVSTcnts, paste0("SINEheatmapTop150Var", b_noovp, "100k.pdf"), 150)
+  plotheatmap(dnaVSTcnts, paste0("DNAheatmapTop150Var", b_noovp, "100k.pdf"), 150)
+  plotheatmap(ltrVSTcnts, paste0("LTRheatmapTop150Var", b_noovp, "100k.pdf"), 150)
+  plotheatmap(hervVSTcnts, paste0("HERVheatmapTop150Var", b_noovp, "100k.pdf"), 150)
+  plotheatmap(youngL1VSTcnts, paste0("youngL1heatmapTop150Var", b_noovp, "100k.pdf"), 150)
 

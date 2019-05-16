@@ -18,6 +18,7 @@ if (length(args)==2) {
   }
 }
 resultdir = paste0("result.", unlist(str_split(genedatadir, "/"))[2], ".", unlist(str_split(TEdatadir, "/"))[2], "/")
+resultinstancedir = str_replace(resultdir, "/$", ".instance/")
 dir.create(resultdir) 
 print(resultdir)
 
@@ -215,7 +216,34 @@ if (file.exists(paste0(resultdir,"ddsNew.RData"))) {
   dim(TEcntmatrix)
   rownames(TEcntmatrix) <- TEnames
   colnames(TEcntmatrix) <- paste(patientIDs, tissues, sep=".")
-  
+
+ 
+#  TEinstancecnts <- read.table(paste0( TEdatadir, "rawcnts.new.maxgt5.txt"), header=TRUE, sep="\t", row.names=1)
+#  TEnames <- matrix(unlist(strsplit(rownames(TEinstancecnts), ":")), ncol=5, byrow=TRUE) 
+#  TElocus = TEnames[,1]
+#  rownames(TEinstancecnts) = TElocus
+#  names(TEnames) = TElocus
+#  TEfamnames <- unique(paste(TEnames[,2], TEnames[,3], TEnames[,4],sep=":"))
+#  TEfamnames <- cbind.data.frame(unlist(lapply(strsplit( TEfamnames, ":"), "[[", 1)), TEfamnames)
+#  rownames(TEfamnames) <- TEfamnames[,1]
+#  filters = read.table(paste0(resultinstancedir,"gene.noovp.1000.TEs.bed"), sep="\t")
+#  filternames = as.character(filters[,4])
+#  filteredTEinstancecnts <- TEinstancecnts[filternames,]
+#  print(dim(filteredTEinstancecnts))
+#  filteredTEnames <- TEnames[filternames]
+#  rownames(filteredTEinstancecnts) = filteredTEnames
+#  TEfamnames = unlist(lapply(strsplit(rownames(filteredTEinstancecnts), ":"), "[[", 2)) 
+#  filteredTEinstancecnts <- cbind.data.frame(TEfamnames, filteredTEinstancecnts)
+#  TEfamcnts <- aggregate(. ~ TEfamnames, filteredTEinstancecnts[,-1], sum)
+#  rownames(TEfamcnts) <- TEfamcnts[,1]
+#  TEfamcnts <- TEfamcnts[,-1] 
+#  colIDs <- cbind(unlist(lapply(strsplit(colnames(cntmatrix), "[.]"), "[[", 1)), colnames(cntmatrix))
+#  rownames(colIDs) <- colIDs[,1]
+#  colnames(TEfamcnts) <- colIDs[gsub( "[.]", "-", colnames(TEfamcnts)),2]
+#  rownames(TEfamcnts) <- TEfamnames[rownames(TEfamcnts),2]
+#  write.table(TEfamcnts, "cntmatrix.TE.maxgt5.txt", sep="\t", quote=FALSE)
+#
+   
   # merge with existing gene cntmatrix
   t_TEcntmatrix = t(TEcntmatrix)
   t_cntmatrix = t(cntmatrix)
@@ -244,11 +272,125 @@ if (file.exists(paste0(resultdir,"ddsNew.RData"))) {
   
   L1HSnormalized <- ddsnewcnts["L1HS:L1:LINE",]
   write.table(L1HSnormalized, file=paste0(resultdir,"L1HS.normalized.txt"), quote=FALSE, row.names=TRUE, sep="\t")
-  
+
+  geneidx = !grepl(":", rownames(ddsnewcnts)) 
+  genecnts <- ddsnewcnts[geneidx,]
+  genesums <- colSums(genecnts)
+  log2genesums <- log2(genesums)
+  write.table(log2genesums, file=paste0(resultdir,"log2genesums.txt"), quote=FALSE, row.names=TRUE, sep="\t")
+
+  TEcnts <- ddsnewcnts[!geneidx,]
+  TEsums <- colSums(TEcnts)
+  log2TEsums <- log2(TEsums)
+  write.table(log2TEsums, file=paste0(resultdir,"log2TEsums.txt"), quote=FALSE, row.names=TRUE, sep="\t")
+
   normalizedcolsums <- colSums(ddsnewcnts)
   log2colsums <- log2(normalizedcolsums)
   write.table(log2colsums, file=paste0(resultdir,"log2colsums.txt"), quote=FALSE, row.names=TRUE, sep="\t")
+
+
+
+  # raw counts
+  librarysize <- read.table("./data/fastq.readcnts.txt")
+  rawgenesum <- colSums(cntmatrix)
+  names(rawgenesum) <- unlist(lapply(strsplit(names(rawgenesum), "[.]"), "[[", 1))
+  rawgenesum <- rawgenesum[as.character(rownames(librarysize))]
+  rawTEsum <- colSums(TEcntmatrix)
+  names(rawTEsum) <- unlist(lapply(strsplit(names(rawTEsum), "[.]"), "[[", 1))
+  rawTEsum <- rawTEsum[as.character(rownames(librarysize))]
+  librarysize$rawgenesum <- rawgenesum
+  librarysize$rawnongenesum <- librarysize$cnt - librarysize$rawgenesum
+  librarysize$rawTEsum <- rawTEsum
+  librarysize$normalized_genesum = genesums
+  librarysize$normalized_nongenesum = librarysize$rawnongenesum/sizeFactors(ddsnew)
+  librarysize$normalized_TEsum = TEsums
+  write.table(librarysize, "./data/librarysize.txt")
+  loglibsize <- librarysize
+  loglibsize[,c(2,5:10)] = log2(loglibsize[,c(2,5:10)])
+
+  # plot cor
+  bp <- ggplot(librarysize, aes(y=rawgenesum, x=cnt)) + geom_point()
+  pdf("rawgene2lib.pdf", height=28,  width=7)
+  bp + facet_grid(tissue ~ .)
+  dev.off()
+
+  bp <- ggplot(librarysize, aes(y=rawnongenesum, x=cnt)) + geom_point()
+  pdf("rawnongene2lib.pdf", height=28,  width=7)
+  bp + facet_grid(tissue ~ .)
+  dev.off()
   
+  bp <- ggplot(librarysize, aes(y=normalized_genesum, x=cnt)) + geom_point()
+  pdf("normgene2lib.pdf", height=28,  width=7)
+  bp + facet_grid(tissue ~ .)
+  dev.off()
+
+  bp <- ggplot(librarysize, aes(y=rawgenesum, x=rawnongenesum)) + geom_point()
+  pdf("rawgene2nongene.pdf", height=28,  width=7)
+  bp + facet_grid(tissue ~ .)
+  dev.off()
+
+  bp <- ggplot(librarysize, aes(y=normalized_genesum, x=rawnongenesum)) + geom_point()
+  pdf("normgene2nongene.pdf", height=28,  width=7)
+  bp + facet_grid(tissue ~ .)
+  dev.off()
+
+  bp <- ggplot(librarysize, aes(y=rawTEsum, x=cnt)) + geom_point()
+  pdf("rawTE2lib.pdf", height=28,  width=7)
+  bp + facet_grid(tissue ~ .)
+  dev.off()
+
+  bp <- ggplot(librarysize, aes(y=normalized_TEsum, x=cnt)) + geom_point()
+  pdf("normTE2lib.pdf", height=28,  width=7)
+  bp + facet_grid(tissue ~ .)
+  dev.off()
+
+  bp <- ggplot(librarysize, aes(y=rawTEsum, x=rawnongenesum)) + geom_point()
+  pdf("rawTE2nongene.pdf", height=28,  width=7)
+  bp + facet_grid(tissue ~ .)
+  dev.off()
+
+  bp <- ggplot(librarysize, aes(y=normalized_TEsum, x=rawnongenesum)) + geom_point()
+  pdf("normTE2nongene.pdf", height=28,  width=7)
+  bp + facet_grid(tissue ~ .)
+  dev.off()
+
+  bp <- ggplot(librarysize, aes(y=rawTEsum, x=rawgenesum)) + geom_point()
+  pdf("rawTE2rawgene.pdf", height=28,  width=7)
+  bp + facet_grid(tissue ~ .)
+  dev.off()
+
+  bp <- ggplot(librarysize, aes(y=normalized_TEsum, x=normalized_genesum)) + geom_point()
+  pdf("normTE2normgene.pdf", height=28,  width=7)
+  bp + facet_grid(tissue ~ .)
+  dev.off()
+
+  bp <- ggplot(loglibsize, aes(y=normalized_TEsum, x=normalized_genesum)) + geom_point()
+  pdf("lognormTE2lognormgene.pdf", height=28,  width=7)
+  bp + facet_grid(tissue ~ .)
+  dev.off()
+
+  bp <- ggplot(librarysize, aes(y=normalized_nongenesum, x=normalized_genesum)) + geom_point()
+  pdf("normnongene2normgene.pdf", height=28,  width=7)
+  bp + facet_grid(tissue ~ .)
+  dev.off()
+
+  bp <- ggplot(loglibsize, aes(y=normalized_nongenesum, x=normalized_genesum)) + geom_point()
+  pdf("lognormnongene2lognormgene.pdf", height=28,  width=7)
+  bp + facet_grid(tissue ~ .)
+  dev.off()
+
+  bp <- ggplot(librarysize, aes(y=normalized_TEsum, x=normalized_nongenesum)) + geom_point()
+  pdf("normTE2normnongene.pdf", height=28,  width=7)
+  bp + facet_grid(tissue ~ .)
+  dev.off()
+
+  bp <- ggplot(loglibsize, aes(y=normalized_TEsum, x=normalized_nongenesum)) + geom_point()
+  pdf("lognormTE2lognonnormgene.pdf", height=28,  width=7)
+  bp + facet_grid(tissue ~ .)
+  dev.off()
+
+
+
 }
 
 
@@ -303,12 +445,20 @@ if (file.exists(paste0(resultdir,"ddsNew.RData"))) {
  
 # violin plot L1HS
 L1HS_bytype = read.table(paste0(resultdir,"L1HS.VST.txt"), header=TRUE, row.names=1, sep="\t")
+sampleidx = rep(TRUE, nrow(L1HS_bytype))
+# remove ESCA and STAD
+ESCASTADidx = (L1HS_bytype$tissue == "ESCA") | (L1HS_bytype$tissue == "STAD")
+sampleidx = ESCASTADidx
+L1HS_bytype = L1HS_bytype[sampleidx,]
+
 oldLINE = read.table(paste0(resultdir,"oldLINE.VST.txt"), header=TRUE, row.names=1, sep="\t")
 colnames(oldLINE) = c("patient", "oldLINEVSTcnts")
 
-stopifnot(! any(oldLINE$patient!=L1HS_bytype$patient))
-oldLINE <- cbind(oldLINE[,2], L1HS_bytype[,1:2])
-colnames(oldLINE) <- colnames(L1HS_bytype[,c(36, 1, 2)])
+#stopifnot(! any(oldLINE$patient!=L1HS_bytype$patient))
+#oldLINE <- cbind(oldLINE[,2], L1HS_bytype[,1:2])
+oldLINE <- merge(oldLINE, L1HS_bytype, by="row.names")
+oldLINE <- oldLINE[,3:5]
+colnames(oldLINE) <- colnames(L1HS_bytype[,c(ncol(L1HS_bytype),1,2)])
 
 L1HS_5prime = read.table(paste0(TEdatadir, "L1HS5prime.300.txt"), header=FALSE, sep="\t", stringsAsFactor=FALSE)
 rownames(L1HS_5prime)= L1HS_5prime[,1]
@@ -319,26 +469,27 @@ stopifnot(! any(rownames(L1HS_5prime)!=L1HS_bytype$patient))
 L1HS_5prime <- cbind(log2(L1HS_5prime[,2]), L1HS_bytype)
 L1HS_5prime[L1HS_5prime[,1]<0,1] = -1
 colnames(L1HS_5prime)[1] <- "VSTcnts"
-write.table(L1HS_5prime, file=paste0(resultdir,"L1HS5prime.VST.txt"), quote=FALSE, row.names=TRUE, sep="\t")
+write.table(L1HS_5prime, file=paste0(resultdir,"L1HS5prime.VST.noESCASTAD.txt"), quote=FALSE, row.names=TRUE, sep="\t")
 L1HS_5prime <- L1HS_5prime[,1:3]
 
 housekeepinggenes <- read.table("../mobiledna.housekeeping/data/housekeeping.txt")
 gnames <- unlist(strsplit(rownames(VSTcnts), "[|]"))[c(TRUE, FALSE)]
 ctrlgenesidx <-  match(housekeepinggenes[,1], gnames)
 ctrlgenesidx <- ctrlgenesidx[!is.na(ctrlgenesidx)]
-housemeans <- cbind(colMeans(VSTcnts[ctrlgenesidx,]), L1HS_bytype[,1:2])
+ctrlgenesmeans <- colMeans(VSTcnts[ctrlgenesidx,]) 
+housemeans <- cbind(ctrlgenesmeans[sampleidx], L1HS_bytype[,1:2])
 stopifnot(! any(rownames(housemeans) != rownames(L1HS_bytype)))
-colnames(housemeans) <- colnames(L1HS_bytype[,c(36, 1, 2)])
+colnames(housemeans) <- colnames(L1HS_bytype[,c(ncol(L1HS_bytype), 1, 2)])
 
 L1_house <- rbind(housemeans, L1HS_5prime)
 L1_house$L1 = c(rep(0, nrow(housemeans)), rep(2, nrow(L1HS_5prime)))
 L1_house$L1 <- as.factor(L1_house$L1)
 
 dodge <- position_dodge(width = 0.6)
-ggplot(L1_house, aes(x=tissue, y=VSTcnts, fill=L1)) + geom_violin(position = dodge, draw_quantiles = 0.5) + 
+ggplot(L1_house, aes(x=tissue, y=VSTcnts, fill=L1,  ymin=-1, ymax=12)) + geom_violin(position = dodge, draw_quantiles = 0.5) + 
     scale_fill_manual(values=c("#A4A4A4", "#E69F00", "#FF6666", "#D55E00")) +
     theme_bw()
-ggsave(paste0(resultdir, 'violin.bytype.L1HS.pdf'), width = 20, height = 7, dpi=600)
+ggsave(paste0(resultdir, 'violin.bytype.L1HS.pdf'), width = 1.25*3, height = 7, dpi=600)
 
 
 # scatter plot L1HS5prime vs oldLINE
@@ -356,32 +507,57 @@ bp + facet_grid(tissue ~ .)
 dev.off()
 
 
+#totalsum <- cbind.data.frame(genesums/normalizedcolsums, TEsums/normalizedcolsums, L1HS_bytype)
+#colnames(totalsum)[1:2] = c("gene2total", "TE2total")
+#bp <- ggplot(totalsum, aes(x=gene2total, y=TE2total)) + geom_point()
+#pdf(paste0(resultdir, "gene2TE.proportion.pdf"), height=28, width=7)
+#bp + facet_grid(tissue ~ .)
+#dev.off()
+
+
+
+
 # violin plot family means
-TEmeans <- function(familyname)
+
+TESums <- function(familyname, sampleidx)
 {
   LINEsidx <-  grepl(familyname, gnames)
   LINEsidx <- LINEsidx[!is.na(LINEsidx)]
-  LINEmeans <- cbind(colMeans(VSTcnts[LINEsidx,]), L1HS_bytype[,1:2])
-  stopifnot(! any(rownames(LINEmeans) != rownames(L1HS_bytype)))
-  colnames(LINEmeans) <- colnames(L1HS_bytype[,c(36, 1, 2)])
-  LINEmeans
+  LINEsums <- colSums(2^(VSTcnts[LINEsidx,]))
+  LINESums <- cbind(log2(LINEsums[sampleidx]), L1HS_bytype[,1:2])
+  stopifnot(! any(rownames(LINESums) != rownames(L1HS_bytype)))
+  colnames(LINESums) <- colnames(L1HS_bytype[,c(ncol(L1HS_bytype), 1, 2)])
+  LINESums
 }
 
-LINEmeans <- TEmeans(":LINE")
-DNAmeans <- TEmeans(":DNA")
-LTRmeans <- TEmeans(":LTR")
-SINEmeans <- TEmeans(":SINE")
+LINESums <- TESums(":LINE", sampleidx)
+DNASums <- TESums(":DNA", sampleidx)
+SINESums <- TESums(":SINE", sampleidx)
+LTRSums <- TESums(":LTR", sampleidx)
 
-family_house <- rbind(housemeans, LINEmeans, DNAmeans, LTRmeans, SINEmeans)
-family_house$fam = c(rep(0, nrow(housemeans)), rep(1, nrow(LINEmeans)), rep(2, nrow(DNAmeans)), rep(3, nrow(LTRmeans)), rep(4, nrow(SINEmeans)) )
+
+log2genesums = read.table( file=paste0(resultdir,"log2genesums.txt"), row.names=1, sep="\t")
+log2genesums = cbind(log2genesums[sampleidx,], L1HS_bytype[,1:2])
+stopifnot(! any(rownames(log2genesums) != rownames(L1HS_bytype)))
+colnames(log2genesums) = colnames(L1HS_bytype[,c(ncol(L1HS_bytype), 1, 2)])
+
+log2colsums = read.table( file=paste0(resultdir,"log2colsums.txt"), row.names=1, sep="\t")
+log2colsums = cbind(log2colsums[sampleidx,], L1HS_bytype[,1:2])
+stopifnot(! any(rownames(log2colsums) != rownames(L1HS_bytype)))
+colnames(log2colsums) = colnames(L1HS_bytype[,c(ncol(L1HS_bytype), 1, 2)])
+
+#family_house <- rbind(housemeans, LINESums, DNASums, SINESums, LTRSums, log2genesums, log2colsums)
+#family_house$fam = c(rep(0, nrow(housemeans)), rep(1, nrow(LINESums)), rep(2, nrow(DNASums)), rep(3, nrow(SINESums)), rep(4, nrow(LTRSums)), rep(5, nrow(log2genesums)),  rep(6, nrow(log2colsums)) )
+family_house <- rbind(housemeans, LINESums, DNASums, SINESums, LTRSums)
+family_house$fam = c(rep(0, nrow(housemeans)), rep(1, nrow(LINESums)), rep(2, nrow(DNASums)), rep(3, nrow(SINESums)), rep(4, nrow(LTRSums)) )
 family_house$fam <- as.factor(family_house$fam)
 
 dodge <- position_dodge(width = 0.6)
-ggplot(family_house, aes(x=tissue, y=VSTcnts, fill=fam)) + geom_violin(position = dodge, draw_quantiles = 0.5) +
-      scale_fill_manual(values=c("#A4A4A4", "#FDBF6F", "#FB9A99", "#B2DF8A", "#CAB2D6")) +
+ggplot(family_house, aes(x=tissue, y=VSTcnts, fill=fam, ymin=12, ymax=20.5)) + geom_violin(position = dodge, draw_quantiles = 0.5) +
+      scale_fill_manual(values=c("#A4A4A4", "#FDBF6F", "#FB9A99", "#B2DF8A", "wheat1", "skyblue1", "#CAB2D6")) +
       #stat_summary(fun.y=mean, geom="point", shape=20, size=7, color="red", fill="red") +
       theme_bw()
-ggsave(paste0(resultdir, 'violin.bytype.family.pdf'), width = 20, height = 7, dpi=600)
+ggsave(paste0(resultdir, 'violin.bytype.family.pdf'), width = 1.25*3, height = 7, dpi=600)
 
 exit()
 

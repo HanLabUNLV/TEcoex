@@ -36,6 +36,9 @@ generatio <- function(genename)
 TEcnts <- read.table(TEfile, sep="\t", header=TRUE)
 colnames(TEcnts)[which(colnames(TEcnts)=="gene")] <-"VSTcnts"
 
+oldLINEVST <- read.table(file=paste0(resultdir, "/WGCNA/consensus/eigengeneME1.txt"), sep="\t", header = FALSE)
+colnames(oldLINEVST) <- c("patient", "oldLINEVST")
+
 log2TPMsum <- read.table(file=paste0(resultdir, "log2colsums.txt"), sep="\t", header = TRUE, row.names=1)
 log2TPMsum <- cbind(substr(rownames(log2TPMsum), 1, 12), log2TPMsum)
 colnames(log2TPMsum) <- c("patient", "log2TPMsum")
@@ -87,6 +90,7 @@ for (j in 1:length(cancertypes)) {
 
     data <- merge(TEcnts, gene, by = "patient")
     data <- merge(data, log2TPMsum, by = "patient")
+    data <- merge(data, oldLINEVST, by = "patient")
     if (cancertype == "THCA") {
       data <- merge(data, THCAradiation, by = "patient")
     }
@@ -110,6 +114,61 @@ for (j in 1:length(cancertypes)) {
     spearman_rho[i] <- test$estimate
     spearman_pval[i] <- test$p.value
 
+#
+#    AICc = NULL    
+#    set.seed(0)
+#    garbage <- rnorm(length(dataratio$VSTcnts))  
+#    if (cancertype == "THCA") {
+#      if (length(summary(dataratio$nested.batch))>1) {
+#        mod0 <- lm(VSTcnts ~ garbage + oldLINEVST, data=dataratio)
+#        mod1 <- lm(VSTcnts ~ log2TPMsum + oldLINEVST, data=dataratio)
+#        mod2 <- lm(VSTcnts ~ gene_n + oldLINEVST, data=dataratio)
+#        mod3 <- lm(VSTcnts ~ gene_n + log2TPMsum + oldLINEVST, data=dataratio)
+#        mod4 <- lm(VSTcnts ~ nested.batch + oldLINEVST, data=dataratio)
+#        mod5 <- lm(VSTcnts ~ log2TPMsum + nested.batch + oldLINEVST, data=dataratio)
+#        mod6 <- lm(VSTcnts ~ gene_n + nested.batch + oldLINEVST, data=dataratio)
+#        mod7 <- lm(VSTcnts ~ gene_n + log2TPMsum + nested.batch + oldLINEVST, data=dataratio)
+#        mod8 <- lm(VSTcnts ~ THCAradiation + oldLINEVST, data=dataratio)
+#        mod9 <- lm(VSTcnts ~ log2TPMsum + THCAradiation + oldLINEVST, data=dataratio)
+#        mod10 <- lm(VSTcnts ~ gene_n + THCAradiation + oldLINEVST, data=dataratio)
+#        mod11 <- lm(VSTcnts ~ gene_n + log2TPMsum + THCAradiation + oldLINEVST, data=dataratio)
+#        mod12 <- lm(VSTcnts ~ nested.batch + THCAradiation + oldLINEVST, data=dataratio)
+#        mod13 <- lm(VSTcnts ~ log2TPMsum + nested.batch + THCAradiation + oldLINEVST, data=dataratio)
+#        mod14 <- lm(VSTcnts ~ gene_n + nested.batch + THCAradiation + oldLINEVST, data=dataratio)
+#        mod15 <- lm(VSTcnts ~ gene_n + log2TPMsum + nested.batch + THCAradiation + oldLINEVST, data=dataratio)
+#        AICc<-model.sel(mod0,mod1,mod2,mod3,mod4, mod5, mod6, mod7,mod8,mod9,mod10,mod11,mod12,mod13,mod14,mod15)
+#      } else {
+#        mod0 <- lm(VSTcnts ~ garbage + oldLINEVST, data=dataratio)
+#        mod1 <- lm(VSTcnts ~ log2TPMsum + oldLINEVST, data=dataratio)
+#        mod2 <- lm(VSTcnts ~ gene_n + oldLINEVST, data=dataratio)
+#        mod3 <- lm(VSTcnts ~ gene_n + log2TPMsum + oldLINEVST, data=dataratio)
+#        mod4 <- lm(VSTcnts ~ THCAradiation + oldLINEVST, data=dataratio)
+#        mod5 <- lm(VSTcnts ~ log2TPMsum + THCAradiation + oldLINEVST, data=dataratio)
+#        mod6 <- lm(VSTcnts ~ gene_n + THCAradiation + oldLINEVST, data=dataratio)
+#        mod7 <- lm(VSTcnts ~ gene_n + log2TPMsum + THCAradiation + oldLINEVST, data=dataratio)
+#        AICc<-model.sel(mod0,mod1,mod2,mod3,mod4,mod5,mod6,mod7)
+#      }      
+#    } else {
+#    if (length(summary(dataratio$nested.batch))>1) {
+#      mod0 <- lm(VSTcnts ~ garbage + oldLINEVST, data=dataratio)
+#      mod1 <- lm(VSTcnts ~ log2TPMsum + oldLINEVST, data=dataratio)
+#      mod2 <- lm(VSTcnts ~ gene_n + oldLINEVST, data=dataratio)
+#      mod3 <- lm(VSTcnts ~ gene_n + log2TPMsum + oldLINEVST, data=dataratio)
+#      mod4 <- lm(VSTcnts ~ nested.batch + oldLINEVST, data=dataratio)
+#      mod5 <- lm(VSTcnts ~ log2TPMsum + nested.batch + oldLINEVST, data=dataratio)
+#      mod6 <- lm(VSTcnts ~ gene_n + nested.batch + oldLINEVST, data=dataratio)
+#      mod7 <- lm(VSTcnts ~ gene_n + log2TPMsum + nested.batch + oldLINEVST, data=dataratio)
+#      AICc<-model.sel(mod0,mod1,mod2,mod3,mod4, mod5, mod6, mod7)
+#    } else {
+#      mod0 <- lm(VSTcnts ~ garbage + oldLINEVST, data=dataratio)
+#      mod1 <- lm(VSTcnts ~ log2TPMsum + oldLINEVST, data=dataratio)
+#      mod2 <- lm(VSTcnts ~ gene_n + oldLINEVST, data=dataratio)
+#      mod3 <- lm(VSTcnts ~ gene_n + log2TPMsum + oldLINEVST, data=dataratio)
+#      AICc<-model.sel(mod0,mod1,mod2,mod3)
+#    }
+#    }
+#    
+#
     AICc = NULL    
     set.seed(0)
     garbage <- rnorm(length(dataratio$VSTcnts))  

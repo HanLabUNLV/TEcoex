@@ -268,7 +268,7 @@ if (file.exists(paste0(resultdir, "WGCNA/consensus/Consensus-NetworkConstruction
 } else {
 
 
-# Choose a set of soft-thresholding powers
+## Choose a set of soft-thresholding powers
 powers = c(seq(4,10,by=1), seq(12,20, by=2));
 # Initialize a list to hold the results of scale-free analysis
 powerTables = vector(mode = "list", length = nSets);
@@ -408,22 +408,27 @@ for (set in 1:nSets)
 #  moduleTraitCor[[set]] = cor(consMEs[[set]]$data, Traits[[set]]$data[,c("L1HS", "oldLINE")], use = "p");
 #  moduleTraitPvalue[[set]] = corPvalueFisher(moduleTraitCor[[set]], exprSize$nSamples[set]);
 
+  traitmat <- Traits[[set]]$data
+  traitmat$age = as.numeric(as.character(traitmat$age_at_diagnosis))/365
+  Traits[[set]]$data = traitmat
 # linear model with covariate
   rownames(consMEs[[set]]$data) = rownames(multiExpr[[set]]$data);
-  module2L1HS = lm_module2trait(consMEs[[set]]$data, Traits[[set]]$data, paste0(resultdir, "WGCNA/consensus/"), "L1HS.5prime")
-  module2oldLINE = lm_module2trait(consMEs[[set]]$data, Traits[[set]]$data,  paste0(resultdir, "WGCNA/consensus/"), "oldLINE")
+  module2L1HS = lm_module2trait(consMEs[[set]]$data, traitmat, paste0(resultdir, "WGCNA/consensus/"), "L1HS.5prime")
+  module2oldLINE = lm_module2trait(consMEs[[set]]$data, traitmat,  paste0(resultdir, "WGCNA/consensus/"), "oldLINE")
+  module2gender = lm_trait2module(consMEs[[set]]$data, traitmat,  paste0(resultdir, "WGCNA/consensus/"), "gender", TRUE)
+  module2age = lm_trait2module(consMEs[[set]]$data, traitmat,  paste0(resultdir, "WGCNA/consensus/"), "age", FALSE)
 
-  setModuleTraitCor = data.matrix(cbind(module2L1HS$moduleexp_coef, module2oldLINE$moduleexp_coef))
+  setModuleTraitCor = data.matrix(cbind(module2L1HS$moduleexp_coef, module2oldLINE$moduleexp_coef, module2gender$moduleexp_coef, module2age$moduleexp_coef))
   rownames(setModuleTraitCor) = colnames(consMEs[[set]]$data)
-  colnames(setModuleTraitCor) = c("L1HS.5prime", "oldLINE")
+  colnames(setModuleTraitCor) = c("L1HS.5prime", "oldLINE", "gender", "age")
   
-  setModuleTraitPvalue = data.matrix(cbind(module2L1HS$moduleexp_pval, module2oldLINE$moduleexp_pval))
+  setModuleTraitPvalue = data.matrix(cbind(module2L1HS$moduleexp_pval, module2oldLINE$moduleexp_pval, module2gender$moduleexp_pval, module2age$moduleexp_pval))
   rownames(setModuleTraitPvalue) = colnames(consMEs[[set]]$data)
-  colnames(setModuleTraitPvalue) = c("L1HS.5prime", "oldLINE")
+  colnames(setModuleTraitPvalue) = c("L1HS.5prime", "oldLINE", "gender", "age")
 
-  setModuleTraitEta2 = data.matrix(cbind(module2L1HS$partialeta2, module2oldLINE$partialeta2))
+  setModuleTraitEta2 = data.matrix(cbind(module2L1HS$partialeta2, module2oldLINE$partialeta2, module2gender$partialeta2, module2age$partialeta2))
   rownames(setModuleTraitEta2) = colnames(consMEs[[set]]$data)
-  colnames(setModuleTraitEta2) = c("L1HS.5prime", "oldLINE")
+  colnames(setModuleTraitEta2) = c("L1HS.5prime", "oldLINE", "gender", "age")
 
   moduleTraitCor[[set]] = setModuleTraitCor;
   moduleTraitPvalue[[set]] = setModuleTraitPvalue;
@@ -463,7 +468,7 @@ colorlevel = sign(moduleTraitCor[[set]])*moduleTraitEta2[[set]]
 #print(moduleTraitEta2[[set]])
 #print(colorlevel)
 labeledHeatmap(Matrix = colorlevel,
-               xLabels = c("L1HS.5prime", "oldLINE"),
+               xLabels = c("L1HS.5prime", "oldLINE", "gender", "age"),
                yLabels = MEnumeric,
                ySymbols = MEnumeric,
                colorLabels = FALSE,
@@ -561,7 +566,7 @@ par(mar = c(6, 8.8, 3, 2.2));
 zlimit = ceiling(max(abs(consensusEta2), na.rm=TRUE))
 colorlevel = sign(consensusCor)*consensusEta2
 labeledHeatmap(Matrix = colorlevel,
-               xLabels = c("L1HS.5prime", "oldLINE"),
+               xLabels = c("L1HS.5prime", "oldLINE", "gender", "age"),
                yLabels = MEnumeric,
                ySymbols = MEnumeric,
                colorLabels = TRUE,
@@ -758,12 +763,15 @@ plotGeneIdx = rep(FALSE, nGenes)
 # write a BED file of TSS's (+-1kb window) of genes in the TE modules
 TSS = read.table(paste0(datadir, "TCGA.TSS.uniq.txt"), header=TRUE, sep="\t");
 rownames(TSS) = paste(TSS[,1], TSS[,2], sep="|")
- 
+
+TEproportion = c()
 TEmodules = c()
 for( i in modulenumbers) {
   genesinmodule = (info.kME.cor$ModuleLabel == i)
   TEsinmodule = genesinmodule & grepl(":", info.kME.cor$Gene)
+  TEproportion = c(TEproportion, sum(TEsinmodule)/sum(genesinmodule))
   if (sum(TEsinmodule) > sum(genesinmodule)*0.5) {
+#  if (sum(TEsinmodule) > sum(genesinmodule)*0.05) {
     TEmodules = c(TEmodules, i)
   }
 }
@@ -796,14 +804,14 @@ for( i in TEmodules) {
 plotGeneIdx.pos = plotGeneIdx
 write.table(info.kME.cor[plotGeneIdx.pos, 1:5], file = paste0(resultdir, "WGCNA/consensus/labeltree.pos.txt"), row.names = FALSE, quote = FALSE, sep="\t")
 
-for( i in c(TEmodules,36)) {  # now print bladder esophagus and head and neck including cluster 36 that is specific to these tissues
-  importantgenes = rep(TRUE, nGenes)
-  for (set in c(1,4,5)) {
-    collabel = paste0("kME.set", set, "ME", i)
-    FilterGenes= kMEcor[,collabel]>.8
-    write.table(info.kME.cor[FilterGenes, 1:5], file = paste0(resultdir, "WGCNA/consensus/TEmodule.", i, ".", setLabels[set], ".highMMgenes.txt"), row.names = FALSE, quote = FALSE)
-  }
-}
+#for( i in c(TEmodules,36)) {  # now print bladder esophagus and head and neck including cluster 36 that is specific to these tissues
+#  importantgenes = rep(TRUE, nGenes)
+#  for (set in c(1,4,5)) {
+#    collabel = paste0("kME.set", set, "ME", i)
+#    FilterGenes= kMEcor[,collabel]>.8
+#    write.table(info.kME.cor[FilterGenes, 1:5], file = paste0(resultdir, "WGCNA/consensus/TEmodule.", i, ".", setLabels[set], ".highMMgenes.txt"), row.names = FALSE, quote = FALSE)
+#  }
+#}
 
 
 # find modules negatively correlated with the TEmodules
@@ -890,12 +898,12 @@ for (set in 1:nSets)
 
   genes = rep(0, length(labeltree))
   labeltreegenenames = unlist(lapply(strsplit(labeltree, "[.]"), `[[`, 1))
-  ZFPs = read.table(paste0(datadir, "/ZNF/ZNFlist.txt"), header=FALSE)
-  ZFPs = ZFPs[[1]]
-  ZFPs = substr(ZFPs, 1, nchar(ZFPs)-4) 
-  ZFPs = sub("[|]", ".", ZFPs)
-  ZFPmatch = match(labeltree, ZFPs)
-  genes[!is.na(ZFPmatch)] = 1
+#  ZFPs = read.table(paste0(datadir, "/ZNF/ZNFlist.txt"), header=FALSE)
+#  ZFPs = ZFPs[[1]]
+#  ZFPs = substr(ZFPs, 1, nchar(ZFPs)-4) 
+#  ZFPs = sub("[|]", ".", ZFPs)
+#  ZFPmatch = match(labeltree, ZFPs)
+#  genes[!is.na(ZFPmatch)] = 1
   #ribosome = read.table(paste0(datadir, "/GO_ribosome.msigDB.txt"), header=TRUE, sep="\t")
   ribosome = read.table(paste0(datadir, "/GO_Struct_Ribosome.msigDB.txt"), header=TRUE, sep="\t")
   ribosome = ribosome[-1,]
@@ -905,11 +913,15 @@ for (set in 1:nSets)
   mitochondria = mitochondria[-1,]
   mitomatch = match(labeltreegenenames, mitochondria)
   genes[!is.na(mitomatch)] = 2
+  immune = read.table(paste0(datadir, "/GO_IMMUNE_SYSTEM_PROCESS.msigDB.txt"), header=TRUE, sep="\t")
+  immune = immune[-1,]
+  immunematch = match(labeltreegenenames, immune)
+  genes[!is.na(immunematch)] = 4
   genes = as.factor(genes)
   annotation_data <- cbind.data.frame(TE, genes)
   
   col_vector1 = c("lightgrey", "#e6194b", "#3cb44b", "#ffe119", "#0082c8", "#f58231", "#911eb4", "#d2f53c", "#fabebe", "#e6    beff", "#800000", "#ffd8b1", "#000080", "#808080", "#FFFFFF", "#000000")
-  col_vector2 = c("lightgrey", "yellowgreen", "orange", "purple", "#e6beff", "#800000", "#ffd8b1", "#000080", "#808080", "#FFFFFF", "#000000")
+  col_vector2 = c("lightgrey", "purple", "orange", "yellowgreen", "#e6beff", "#800000", "#ffd8b1", "#000080", "#808080", "#FFFFFF", "#000000")
   mycolors=list(TE = col_vector1[1:length(levels(annotation_data$TE))],
                 genes = col_vector2[1:length(levels(annotation_data$genes))])
   names(mycolors$TE) <- levels(annotation_data$TE) 
@@ -959,7 +971,7 @@ for( i in modulenumbers) {
 
 for( i in modulenumbers) {
   if (i == 0) {print ("skipping grey"); next;}
-  reportFileName=paste0(resultdir, "WGCNA/bytissue/", shortname, "/", paste("termClusterReport",i,labels2colors(i),"txt",sep="."))
+  reportFileName=paste0(resultdir, "WGCNA/consensus/", paste("Reactome",i,labels2colors(i),"txt",sep="."))
   if (file.exists(reportFileName)) {print (paste0("skipping ", reportFileName)); next}
   genelist <- info.kME[info.kME$ModuleLabel==i,"EntrezID"]
   genelist = genelist[!is.na(genelist)]
@@ -967,7 +979,7 @@ for( i in modulenumbers) {
   if (! is.null(x) && nrow(x)) {
     write.table(as.data.frame(x), file = paste0(resultdir, "WGCNA/consensus/", paste("Reactome",i,labels2colors(i),"txt", sep=".") ), row.names = FALSE, quote = FALSE);
     dotplot(x, showCategory=15)
-    ggsave(filename=paste0(resultdir, "WGCNA/consensus/Plots/", paste("Reactome",i,labels2colors(i),"pdf", sep=".")), width=16, height=(min(nrow(as.data.frame(x)),15)*0.32), units = "in", limitsize = FALSE )
+    ggsave(filename=paste0(resultdir, "WGCNA/consensus/Plots/", paste("Reactome",i,labels2colors(i),"pdf", sep=".")), width=12, height=(min(nrow(as.data.frame(x)),15)*0.32), units = "in", limitsize = FALSE )
     emapplot(x)
     ggsave(filename=paste0(resultdir, "WGCNA/consensus/Plots/", paste("Reactome",i,labels2colors(i),"em.pdf", sep=".")), width=8, height=12, units = "in")
   }

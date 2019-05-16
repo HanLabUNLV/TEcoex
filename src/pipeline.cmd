@@ -4,11 +4,13 @@ Rscript L1HSstatistics.r &> rsem.log
 Rscript makeHeatmap.r result.rsem.TET &> heatmap.log
 Rscript gene2L1HS.r  &> lm.log 
 Rscript gene2oldLINE.r  &> gene2oldLINE.log 
+Rscript gene2LINE.coef.r result.rsem.TET/gene2L1HS5prime 0.005
+Rscript gene2LINE.coef.r result.rsem.TET/gene2oldLINE 0.005
 
-bash finddupsnrank.sh ../result.rsem.TET/gene2L1HS/
-Rscript clusterprofiler.r result.rsem.TET/gene2L1HS/
-Rscript david.r result.rsem.TET/gene2L1HS/
-Rscript RECscore.r ../result.rsem.TET/gene2L1HS/
+bash finddupsnrank.sh ../result.rsem.TET/gene2L1HS5prime/
+Rscript clusterprofiler.r result.rsem.TET/gene2L1HS5prime/
+Rscript david.r result.rsem.TET/gene2L1HS5prime/
+Rscript RECscore.r ../result.rsem.TET/gene2L1HS5prime/
 
 bash finddupsnrank.sh ../result.rsem.TET/gene2oldLINE/
 Rscript clusterprofiler.r result.rsem.TET/gene2oldLINE/
@@ -55,9 +57,9 @@ Rscript L1HSstatistics.r data/TET data/TET &> TET.log
 Rscript gene2L1HS.r result.TET.TET  &> lmTET.log 
 Rscript gene2oldLINE.r result.TET.TET  &> lmTET.oldLINE.log 
 
-bash finddupsnrank.sh ../result.TET.TET/gene2L1HS/
-Rscript clusterprofiler.r result.TET.TET/gene2L1HS/
-Rscript david.r result.TET.TET/gene2L1HS/
+bash finddupsnrank.sh ../result.TET.TET/gene2L1HS5prime/
+Rscript clusterprofiler.r result.TET.TET/gene2L1HS5prime/
+Rscript david.r result.TET.TET/gene2L1HS5prime/
 
 bash finddupsnrank.sh ../result.TET.TET/gene2oldLINE/
 Rscript clusterprofiler.r result.TET.TET/gene2oldLINE/
@@ -68,12 +70,12 @@ Rscript david.r result.TET.TET/gene2oldLINE/
 Rscript L1HSstatistics.r data/rsem data/TET.uniq &> TET.uniq.log 
 Rscript gene2L1HS.r result.rsem.TET.uniq &> lmuniq.log 
 Rscript gene2oldLINE.r result.rsem.TET.uniq  &> lmuniq.oldLINE.log 
-Rscript gene2LINE.coef.r result.rsem.TET.uniq/gene2L1HS 0.001
-Rscript gene2LINE.coef.r result.rsem.TET.uniq/gene2oldLINE 0.001
+Rscript gene2LINE.coef.r result.rsem.TET.uniq/gene2L1HS 0.005
+Rscript gene2LINE.coef.r result.rsem.TET.uniq/gene2oldLINE 0.005
 
-bash finddupsnrank.sh ../result.rsem.TET.uniq/gene2L1HS/
-Rscript clusterprofiler.r result.rsem.TET.uniq/gene2L1HS/
-Rscript david.r result.rsem.TET.uniq/gene2L1HS/
+bash finddupsnrank.sh ../result.rsem.TET.uniq/gene2L1HS5prime/
+Rscript clusterprofiler.r result.rsem.TET.uniq/gene2L1HS5prime/
+Rscript david.r result.rsem.TET.uniq/gene2L1HS5prime/
 
 bash finddupsnrank.sh ../result.rsem.TET.uniq/gene2oldLINE/
 Rscript clusterprofiler.r result.rsem.TET.uniq/gene2oldLINE/
@@ -87,9 +89,9 @@ Rscript gene2L1HS.r result.rsem.TET.bowtie &> lmbowtie.log
 Rscript gene2LINE.coef.r result.rsem.TET.bowtie/gene2L1HS 0.05
 Rscript gene2LINE.coef.r result.rsem.TET.bowtie/gene2oldLINE 0.05
 
-bash finddupsnrank.sh ../result.rsem.TET.bowtie/gene2L1HS/
-Rscript clusterprofiler.r result.rsem.TET.bowtie/gene2L1HS/
-Rscript david.r result.rsem.TET.bowtie/gene2L1HS/
+bash finddupsnrank.sh ../result.rsem.TET.bowtie/gene2L1HS5prime/
+Rscript clusterprofiler.r result.rsem.TET.bowtie/gene2L1HS5prime/
+Rscript david.r result.rsem.TET.bowtie/gene2L1HS5prime/
 
 bash finddupsnrank.sh ../result.rsem.TET.bowtie/gene2oldLINE/
 Rscript clusterprofiler.r result.rsem.TET.bowtie/gene2oldLINE/

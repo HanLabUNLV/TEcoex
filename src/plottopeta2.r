@@ -52,31 +52,40 @@ gene2L1HS <- function(genename, cancertypes)
 }
 
 
-plotcorrelation <- function(resultdir, direction)
+plotcorrelation <- function(resultdir, direction, genelist = NULL)
 {
-  coex <- read.table(paste0(resultdir, "coexpressed_", direction, ".duplicates.txt"))
-  coex_g <- split(coex, coex$V1)
-  
-  eta2_g <- lapply(coex_g, "[",8)
-  bar <- function(x) {return(sum(x[,1]))}
-  med_eta2s <- unlist(lapply(eta2_g, bar))
-  med_eta2s <- med_eta2s[order(-med_eta2s)]
-  
+
+  coex <- read.table(paste0(resultdir, "coexpressed_", direction, ".txt"), header=TRUE, sep="\t")
+  if (is.null(genelist)) {
+    coex_dup <- read.table(paste0(resultdir, "coexpressed_", direction, ".duplicates.txt"))
+    coex = cbind(coex_dup[,2], coex_dup)
+    coex = coex[,-3]
+    coex_g <- split(coex, coex[,1])
+    
+    eta2_g <- lapply(coex_g, "[",8)
+    bar <- function(x) {return(sum(x[,1]))}
+    med_eta2s <- unlist(lapply(eta2_g, bar))
+    med_eta2s <- med_eta2s[order(-med_eta2s)]
+    genelist = med_eta2s
+  } 
   
   for (i in 1:12) {
-    genename <- names(med_eta2s[i])
+    genename <- names(genelist[i])
     genesymbol = strsplit(genename, "[|]")[[1]][1]
-    subdata <- gene2L1HS(genename, cancertypes=coex[coex$V1==genename,]$V2)
+    cancertypes=coex[coex[,2]==genename,1]
+    if (length(cancertypes) == 0) next;
+    subdata <- gene2L1HS(genename, cancertypes)
+    
     
     npanels = length(levels(factor(subdata$broadertype)))
     
-    #ggplot(subdata, aes(x=gene_n, y=L1HS_n, colour=broadertype) ) + geom_point() + scale_colour_manual(values = col_vector2) + theme_bw()
+    #ggplot(subdata, aes(x=gene_n, y=VSTcnts, colour=broadertype) ) + geom_point() + scale_colour_manual(values = col_vector2) + theme_bw()
     ggplot(subdata) +
-      geom_jitter(aes(x=gene_n, y=L1HS_n, colour=tissue)) + 
-      geom_smooth(aes(x=gene_n, y=L1HS_n), method=lm, se=FALSE, color = "darkgrey") +
+      geom_jitter(aes(x=gene_n, y=VSTcnts, colour=tissue)) + 
+      geom_smooth(aes(x=gene_n, y=VSTcnts), method=lm, se=FALSE, color = "darkgrey") +
       facet_wrap(~broadertype, scales="free_x", nrow=1) +
       scale_x_continuous(breaks = integer_breaks()) +
-      labs(x =  paste0("log2 ", genesymbol), y = "log2 L1HS") +
+      labs(x =  paste0("log2 ", genesymbol), y = "log2 L1HS 5'") +
       scale_colour_manual(values = col_vector[levels(factor(subdata$tissue))]) + theme_bw()
     
     ggsave(filename=paste0(resultdir, direction, ".", genesymbol, "2L1HS.pdf"), width = 2*npanels, height = 2, units = c("in"), dpi = 300)
@@ -100,15 +109,12 @@ plotcorrelation <- function(resultdir, direction)
 
 
 
-rundir = "../result.rsem/"
+rundir = "../result.rsem.TET/"
 setwd(rundir)
 
-L1HS <- read.table("L1HS.VST.txt", sep="\t", header=TRUE, row.names=1)
-L1HS <- L1HS[L1HS$condition=="normal",]
-colnames(L1HS)[10:11] <-c("L1HSnRPM", "L1HS_n")
+L1HS <- read.table("L1HS5prime.VST.txt", sep="\t", header=TRUE, row.names=1)
 
 oldLINEVST <- read.table(file="oldLINE.VST.txt", sep="\t", header = TRUE, row.names=1)
-oldLINEVST <- cbind.data.frame(rownames(oldLINEVST), oldLINEVST)
 colnames(oldLINEVST) <- c("patient", "oldLINEVST")
 
 broadertype = as.character(L1HS$tissue)
@@ -126,14 +132,30 @@ L1HS <- merge(L1HS, oldLINEVST, by = "patient")
 
 
 
-col_vector = c("#e6194b", "#3cb44b", "#ffe119", "#0082c8", "#f58231", "#911eb4", "#46f0f0", "#f032e6", "#d2f53c", "#fabebe", "#008080", "#e6beff", "#aa6e28", "#fffac8", "#800000", "#aaffc3", "#808000", "#ffd8b1", "#000080", "#808080", "#FFFFFF", "#000000")
-col_vector2 = c("#e6194b", "#3cb44b", "#ffe119", "#0082c8", "#f58231", "#911eb4", "#46f0f0", "#008080", "#aa6e28", "#aaffc3", "#808000", "#ffd8b1", "#000080", "#808080", "#FFFFFF", "#000000")
-names(col_vector) <- levels(factor(L1HS$tissue))
 
-resultdir = paste0(rundir, "gene2L1HS/")
+
+col_vector = c("#e6194b", "#3cb44b", "#ffe119", "#0082c8", "#f58231", "#911eb4", "#46f0f0", "#f032e6", "#d2f53c", "#fabebe", "#008080", "#e6beff", "#aa6e28",  "#800000", "#fffac8", "#aaffc3",  "#808000", "#ffd8b1", "#000080", "#808080", "#FFFFFF", "#000000")
+col_vector2 = c("#e6194b", "#3cb44b", "#ffe119", "#0082c8", "#f58231", "#911eb4", "#d2f53c", "#fabebe", "#e6beff", "#800000", "#ffd8b1", "#000080", "#808080", "#FFFFFF", "#000000")
+
+names(col_vector) <- levels(factor(L1HS$tissue))
+names(col_vector2) <- levels(factor(L1HS$broadertype))
+
+resultdir = paste0(rundir, "gene2L1HS5prime/")
+
+
+genelist <- read.table(paste0(resultdir, "REC.minus.new.txt"), header=TRUE)
+genes <-  genelist[1:100,2]
+names(genes) <-  genelist[1:100,1]
+genes <- genes[!grepl(":", names(genes))]
+plotcorrelation(resultdir, "minus", genes)
+genelist <- read.table(paste0(resultdir, "REC.plus.new.txt"), header=TRUE)
+genes <-  genelist[1:100,2]
+names(genes) <-  genelist[1:100,1]
+genes <- genes[!grepl(":", names(genes))]
+plotcorrelation(resultdir, "plus", genes)
+
 plotcorrelation(resultdir, "minus")
 plotcorrelation(resultdir, "plus")
-
 #resultdir = paste0(rundir, "results.VSTnormal/")
 #plotcorrelation(resultdir, "minus")
 #plotcorrelation(resultdir, "plus")

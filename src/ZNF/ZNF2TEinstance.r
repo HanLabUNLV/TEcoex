@@ -13,7 +13,7 @@ args = commandArgs(trailingOnly = TRUE)
 #The directories are hard coded, so they may have to be modified if you're running different tests.
 
 #ZNF662|389114_L2a:L2:LINE_KIRP_coexpressed_minus.txt
-L1family = "THE1B-int:ERVL-MaLR:LTR"
+L1family = "ERV3-16A3_LTR:ERVL:LTR"
 ZFPgene = "ZNF133|7692"
 cancertype = "ESCASTAD"
 if (length(args) > 0) {
@@ -79,6 +79,19 @@ file.names <- dir(paste0(resultdir, "VSTcnts/"), pattern = paste0(L1family, ".tx
 L1names <- substr(file.names, 1, nchar(file.names)-4)
 L1names = unlist(strsplit(L1names, ":"))[c(TRUE, FALSE, FALSE, FALSE)]
 stopifnot( L1names == unique(L1names))
+names(file.names) <- L1names
+
+#filter TEs uniquely mappable and no overlap with genes 1K
+L1famname <- strsplit(L1family, ":")[[1]][1]
+noovp <- read.table(file=paste0(resultdir,"gene.noovp.1000.uniq.TEs.bed"), sep="\t", header=TRUE)
+noovpTEnames <- as.character(noovp[,4])
+noovpTEnames <- cbind.data.frame(noovpTEnames, unlist(lapply(strsplit(noovpTEnames, "_"), "[[", 1)))
+file.names.noovp <- as.character(noovpTEnames[noovpTEnames[,2]==L1famname,1])
+file.names <- file.names[file.names.noovp]
+L1names = names(file.names[!is.na(file.names)])
+if (length(L1names) == 0) {
+  exit
+}
 
 cancertypes = list("BLCA", "BRCA", c("COAD", "READ"), c("ESCA", "STAD"), "HNSC", c("KICH", "KIRC", "KIRP"), "LIHC", c("LUAD", "LUSC"), "PRAD", "THCA", "UCEC")
 cancerdirs = unlist(lapply(cancertypes, paste, collapse=""))

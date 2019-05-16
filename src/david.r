@@ -2,6 +2,7 @@
 library("RDAVIDWebService")
 library(org.Hs.eg.db)
 library(annotate)
+library("ReactomePA")
 
 
 getClusterSymbols <- function (termCluster) {
@@ -75,7 +76,27 @@ if (length(args)>0) {
   }
 }
 print(resultdir)
-runDavid(resultdir)
+#runDavid(resultdir)
 
 
+  pluslist <- read.table(paste(resultdir,"duplicate.plus.rsquared",sep="/"), header=FALSE)
+  ids = pluslist[,2]
+  x <- enrichPathway(gene=ids, pvalueCutoff=0.05, readable=T)
+  if (! is.null(x) && nrow(x)) {
+    write.table(as.data.frame(x), file = paste0(resultdir, paste("Reactome.plus.txt", sep=".") ), row.names = FALSE, quote = FALSE);
+    dotplot(x, showCategory=15)
+    ggsave(filename=paste0(resultdir, paste("Reactome.plus.pdf", sep=".")), width=16, height=(min(nrow(as.data.frame(x)),15)*0.32), units = "in", limitsize = FALSE )
+    emapplot(x)
+    ggsave(filename=paste0(resultdir, paste("Reactome.plus.em.pdf", sep=".")), width=8, height=12, units = "in")
+  }
+  minuslist <- read.table(paste(resultdir,"duplicate.minus.rsquared",sep="/"), header=FALSE)
+  ids = minuslist[,2]
+  x <- enrichPathway(gene=ids, pvalueCutoff=0.05, readable=T)
+  if (! is.null(x) && nrow(x)) {
+    write.table(as.data.frame(x), file = paste0(resultdir, paste("Reactome.minus.txt", sep=".") ), row.names = FALSE, quote = FALSE);
+    dotplot(x, showCategory=15)
+    ggsave(filename=paste0(resultdir, paste("Reactome.minus.pdf", sep=".")), width=16, height=(min(nrow(as.data.frame(x)),15)*0.32), units = "in", limitsize = FALSE )
+    emapplot(x)
+    ggsave(filename=paste0(resultdir, paste("Reactome.minus.em.pdf", sep=".")), width=8, height=12, units = "in")
+  }
 

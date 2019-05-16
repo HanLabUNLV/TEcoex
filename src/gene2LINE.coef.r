@@ -6,8 +6,8 @@ library(matrixStats)
 
 setwd("../")
 args = commandArgs(trailingOnly=TRUE)
-resultdir = "result.rsem.TET/gene2L1HS"
-cutoff = 0.0001
+resultdir = "result.rsem.TET/gene2L1HS5prime"
+cutoff = 0.0005
 print (args)
 if (length(args)>0) {
   resultdir = args[1]
